@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clientes nuevos - Oficina</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f4e79">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="config.js"></script>
+<script src="api.js"></script>
+<style>
+  :root { --azul:#1f4e79; --gris:#f2f4f7; --borde:#e4e7ec; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,Roboto,Arial,sans-serif; background:var(--gris); color:#1d2939; }
+  header { background:var(--azul); color:#fff; padding:14px 20px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; }
+  header h1 { margin:0; font-size:20px; }
+  main { padding:16px 20px; }
+  .barra { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .barra input, .barra select { font-size:15px; padding:9px 10px; border:1px solid #d0d5dd; border-radius:8px; }
+  .barra input { flex:1; min-width:200px; }
+  button, .boton { font-size:14px; padding:9px 14px; border-radius:8px; border:1px solid #d0d5dd; background:#fff; cursor:pointer; color:#1d2939; text-decoration:none; }
+  .resumen { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .kpi { background:#fff; border-radius:10px; padding:10px 16px; min-width:120px; }
+  .kpi b { display:block; font-size:22px; }
+  .kpi span { font-size:13px; color:#667085; }
+  .tabla { background:#fff; border-radius:12px; overflow:auto; }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th, td { text-align:left; padding:10px; border-bottom:1px solid var(--borde); vertical-align:top; }
+  th { background:#f9fafb; font-size:12px; text-transform:uppercase; color:#475467; position:sticky; top:0; }
+  tr:hover td { background:#f9fafb; }
+  .estado { font-weight:600; font-size:12px; padding:3px 8px; border-radius:20px; white-space:nowrap; }
+  .Pendiente { background:#fef0c7; color:#93370d; }
+  .Aprobado { background:#d1fadf; color:#05603a; }
+  .Rechazado { background:#fee4e2; color:#912018; }
+  .alerta { color:#d92d20; font-size:12px; font-weight:600; }
+  #login { max-width:340px; margin:80px auto; background:#fff; padding:24px; border-radius:12px; text-align:center; }
+  #login input { width:100%; font-size:17px; padding:12px; margin:12px 0; border:1px solid #d0d5dd; border-radius:8px; }
+  #modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); padding:20px; overflow:auto; z-index:10; }
+  #modal .caja { background:#fff; max-width:900px; margin:auto; border-radius:12px; padding:20px; }
+  .fotos { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin:12px 0; }
+  .fotos img { width:100%; border-radius:8px; background:#eee; min-height:120px; }
+  .detalle { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:6px 16px; font-size:14px; }
+  .detalle div span { color:#667085; display:block; font-size:12px; }
+  iframe.mapa { width:100%; height:260px; border:0; border-radius:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Clientes nuevos · <span class="empresa"></span></h1>
+  <div id="acciones" style="display:none">
+    <button onclick="cargar()">↻ Actualizar</button>
+    <button onclick="abrirHoja()">Abrir en Google Sheets</button>
+  </div>
+</header>
+
+<div id="login">
+  <h2>Portal de oficina</h2>
+  <input type="password" id="clave" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()">
+  <button onclick="entrar()" style="width:100%;background:var(--azul);color:#fff;border:0;font-size:16px;padding:12px">Entrar</button>
+  <p id="loginErr" class="alerta"></p>
+</div>
+
+<main id="app" style="display:none">
+  <div class="resumen" id="resumen"></div>
+  <div class="barra">
+    <input id="buscar" placeholder="Buscar por nombre, RIF, vendedor, zona..." oninput="pintar()">
+    <select id="filtroEstado" onchange="pintar()">
+      <option value="">Todos los estados</option><option>Pendiente</option><option>Aprobado</option><option>Rechazado</option>
+    </select>
+    <select id="filtroVendedor" onchange="pintar()"><option value="">Todos los vendedores</option></select>
+  </div>
+  <div class="tabla">
+    <table>
+      <thead><tr><th>Fecha</th><th>Cliente</th><th>RIF</th><th>Vendedor</th><th>Contacto</th><th>Zona</th><th>Ubicación</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="filas"><tr><td colspan="9">Cargando...</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<div id="modal" onclick="if(event.target===this)cerrar()"><div class="caja" id="modalCaja"></div></div>
+
+<script>
+  var CLAVE = '', DATOS = [];
+  try { CLAVE = sessionStorage.getItem('clave') || ''; } catch (e) {}
+  if (CLAVE) entrar(CLAVE);
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+  function entrar(guardada) {
+    CLAVE = guardada || document.getElementById('clave').value;
+    google.script.run.withSuccessHandler(function (d) {
+      try { sessionStorage.setItem('clave', CLAVE); } catch (e) {}
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('acciones').style.display = 'block';
+      recibir(d);
+      setInterval(cargar, 60000); // se actualiza solo cada minuto
+    }).withFailureHandler(function (e) {
+      try { sessionStorage.removeItem('clave'); } catch (x) {}
+      document.getElementById('loginErr').textContent = e.message;
+    }).listarClientes(CLAVE);
+  }
+
+  function cargar() { google.script.run.withSuccessHandler(recibir).withFailureHandler(function (e) { alert(e.message); }).listarClientes(CLAVE); }
+
+  function recibir(d) {
+    DATOS = d;
+    var sel = document.getElementById('filtroVendedor'), actual = sel.value;
+    var vendedores = Array.from(new Set(d.map(function (x) { return x['Vendedor']; }))).sort();
+    sel.innerHTML = '<option value="">Todos los vendedores</option>' + vendedores.map(function (v) { return '<option>' + esc(v) + '</option>'; }).join('');
+    sel.value = actual;
+    pintar();
+  }
+
+  function pintar() {
+    var q = document.getElementById('buscar').value.toLowerCase();
+    var fe = document.getElementById('filtroEstado').value, fv = document.getElementById('filtroVendedor').value;
+    var lista = DATOS.filter(function (x) {
+      return (!fe || x['Estado'] === fe) && (!fv || x['Vendedor'] === fv) &&
+        (!q || [x['Nombre comercial'], x['Razón social'], x['RIF'], x['Vendedor'], x['Zona / Ciudad'], x['Persona de contacto']].join(' ').toLowerCase().indexOf(q) >= 0);
+    });
+    var hoy = new Date().toDateString();
+    var c = { total: DATOS.length, pend: 0, hoy: 0 };
+    DATOS.forEach(function (x) { if (x['Estado'] === 'Pendiente') c.pend++; if ((x.fechaISO && new Date(x.fechaISO).toDateString()) === hoy) c.hoy++; });
+    document.getElementById('resumen').innerHTML =
+      '<div class="kpi"><b>' + c.total + '</b><span>Total registrados</span></div>' +
+      '<div class="kpi"><b>' + c.pend + '</b><span>Pendientes por revisar</span></div>' +
+      '<div class="kpi"><b>' + lista.length + '</b><span>En esta vista</span></div>';
+    document.getElementById('filas').innerHTML = lista.length ? lista.map(function (x) {
+      return '<tr>' +
+        '<td>' + esc(x['Fecha']) + '</td>' +
+        '<td><b>' + esc(x['Nombre comercial']) + '</b><br><span style="color:#667085">' + esc(x['Razón social']) + '</span>' +
+          (x['Nota oficina'] ? '<div class="alerta">' + esc(x['Nota oficina']) + '</div>' : '') + '</td>' +
+        '<td>' + esc(x['RIF']) + '</td>' +
+        '<td>' + esc(x['Vendedor']) + '</td>' +
+        '<td>' + esc(x['Persona de contacto']) + '<br>' + esc(x['Teléfono']) + '</td>' +
+        '<td>' + esc(x['Zona / Ciudad']) + '</td>' +
+        '<td>' + (x['Google Maps'] ? '<a target="_blank" href="' + esc(x['Google Maps']) + '">📍 Mapa</a>' : '—') + '</td>' +
+        '<td><span class="estado ' + esc(x['Estado']) + '">' + esc(x['Estado']) + '</span></td>' +
+        '<td><button onclick="ver(' + x.fila + ')">Ver</button></td>' +
+      '</tr>';
+    }).join('') : '<tr><td colspan="9">No hay registros.</td></tr>';
+  }
+
+  function ver(fila) {
+    var x = DATOS.filter(function (r) { return r.fila === fila; })[0];
+    var campos = ['ID', 'Fecha', 'Vendedor', 'RIF', 'Razón social', 'Persona de contacto', 'Teléfono', 'Correo', 'Dirección', 'Zona / Ciudad', 'Precisión GPS (m)', 'Observaciones'];
+    var mapa = (x['Latitud'] && x['Longitud'])
+      ? '<iframe class="mapa" src="https://maps.google.com/maps?q=' + encodeURIComponent(x['Latitud'] + ',' + x['Longitud']) + '&z=17&output=embed"></iframe>' : '';
+    document.getElementById('modalCaja').innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">' + esc(x['Nombre comercial']) + '</h2><button onclick="cerrar()">✕</button></div>' +
+      '<div class="fotos"><div><b>Foto RIF</b><img id="imgRif" alt="Cargando..."></div><div><b>Foto local</b><img id="imgLocal" alt="Cargando..."></div></div>' +
+      '<div class="detalle">' + campos.map(function (k) { return '<div><span>' + k + '</span>' + esc(x[k] || '—') + '</div>'; }).join('') + '</div>' +
+      '<h3>Ubicación</h3>' + (x['Google Maps'] ? '<a target="_blank" href="' + esc(x['Google Maps']) + '">Abrir en Google Maps</a>' : 'Sin ubicación') + mapa +
+      '<h3>Revisión de oficina</h3>' +
+      '<textarea id="nota" style="width:100%;min-height:60px;font-size:14px;padding:8px">' + esc(x['Nota oficina']) + '</textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">' +
+        ['Aprobado', 'Pendiente', 'Rechazado'].map(function (e) { return '<button class="estado ' + e + '" style="padding:10px 16px;font-size:14px" onclick="estado(' + fila + ',\'' + e + '\')">Marcar ' + e + '</button>'; }).join('') +
+      '</div>';
+    document.getElementById('modal').style.display = 'block';
+    [['imgRif', 'Foto RIF'], ['imgLocal', 'Foto local']].forEach(function (p) {
+      if (!x[p[1]]) { document.getElementById(p[0]).alt = 'Sin foto'; return; }
+      google.script.run.withSuccessHandler(function (src) { var i = document.getElementById(p[0]); if (i) i.src = src; }).verFoto(CLAVE, x[p[1]]);
+    });
+  }
+
+  function estado(fila, e) {
+    var nota = document.getElementById('nota').value;
+    google.script.run.withSuccessHandler(function () { cerrar(); cargar(); })
+      .withFailureHandler(function (err) { alert(err.message); })
+      .cambiarEstado(CLAVE, fila, e, nota);
+  }
+
+  function cerrar() { document.getElementById('modal').style.display = 'none'; }
+
+  function abrirHoja() { google.script.run.withSuccessHandler(function (u) { window.open(u, '_blank'); }).urlHoja(CLAVE); }
+</script>
+</body>
+</html>
