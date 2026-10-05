@@ -1,105 +1,306 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Clientes nuevos - Oficina</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Panel de oficina</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1f4e79">
+<meta name="theme-color" content="#f5f6f8">
+<meta name="color-scheme" content="light">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <script src="config.js"></script>
 <script src="api.js"></script>
 <style>
-  :root { --azul:#1f4e79; --gris:#f2f4f7; --borde:#e4e7ec; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:system-ui,-apple-system,Roboto,Arial,sans-serif; background:var(--gris); color:#1d2939; }
-  header { background:var(--azul); color:#fff; padding:14px 20px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; }
-  header h1 { margin:0; font-size:20px; }
-  main { padding:16px 20px; }
-  .barra { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
-  .barra input, .barra select { font-size:15px; padding:9px 10px; border:1px solid #d0d5dd; border-radius:8px; }
-  .barra input { flex:1; min-width:200px; }
-  button, .boton { font-size:14px; padding:9px 14px; border-radius:8px; border:1px solid #d0d5dd; background:#fff; cursor:pointer; color:#1d2939; text-decoration:none; }
-  .resumen { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-  .kpi { background:#fff; border-radius:10px; padding:10px 16px; min-width:120px; }
-  .kpi b { display:block; font-size:22px; }
-  .kpi span { font-size:13px; color:#667085; }
-  .tabla { background:#fff; border-radius:12px; overflow:auto; }
-  table { border-collapse:collapse; width:100%; font-size:14px; }
-  th, td { text-align:left; padding:10px; border-bottom:1px solid var(--borde); vertical-align:top; }
-  th { background:#f9fafb; font-size:12px; text-transform:uppercase; color:#475467; position:sticky; top:0; }
-  tr:hover td { background:#f9fafb; }
-  .estado { font-weight:600; font-size:12px; padding:3px 8px; border-radius:20px; white-space:nowrap; }
-  .Pendiente { background:#fef0c7; color:#93370d; }
-  .Aprobado { background:#d1fadf; color:#05603a; }
-  .Rechazado { background:#fee4e2; color:#912018; }
-  .alerta { color:#d92d20; font-size:12px; font-weight:600; }
-  #login { max-width:340px; margin:80px auto; background:#fff; padding:24px; border-radius:12px; text-align:center; }
-  #login input { width:100%; font-size:17px; padding:12px; margin:12px 0; border:1px solid #d0d5dd; border-radius:8px; }
-  #modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); padding:20px; overflow:auto; z-index:10; }
-  #modal .caja { background:#fff; max-width:900px; margin:auto; border-radius:12px; padding:20px; }
-  .fotos { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin:12px 0; }
-  .foto-caja { display:flex; flex-direction:column; gap:6px; min-width:0; }
-  .foto-marco { aspect-ratio:4/3; width:100%; background:#f2f4f7; border:1px solid var(--borde); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#667085; font-size:14px; text-align:center; padding:8px; }
-  .foto-marco img { width:100%; height:100%; object-fit:contain; cursor:zoom-in; display:block; }
-  .foto-pie { display:flex; justify-content:space-between; font-size:13px; }
-  .girando { width:28px; height:28px; border:3px solid #d0d5dd; border-top-color:var(--azul); border-radius:50%; animation:gira 0.8s linear infinite; margin:0 auto 8px; }
-  @keyframes gira { to { transform:rotate(360deg); } }
-  .muted { color:#667085; }
-  #visor { display:none; position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:20; align-items:center; justify-content:center; padding:12px; cursor:zoom-out; }
-  #visor img { max-width:100%; max-height:100%; object-fit:contain; }
-  .detalle { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:6px 16px; font-size:14px; }
-  .detalle div span { color:#667085; display:block; font-size:12px; }
-  iframe.mapa { width:100%; height:260px; border:0; border-radius:8px; }
+  /* Lista a la izquierda, ficha del cliente en un panel que se desliza desde la derecha */
+  :root {
+    --bg: #f5f6f8; --surface: #ffffff; --surface-2: #eef1f5; --ink: #0f1722; --ink-2: #4a5566; --ink-3: #8a94a3; --line: #e2e6ec;
+    --accent: #1b4dd8; --accent-ink: #ffffff; --accent-soft: #e8eefc;
+    --ok: #12805c; --ok-soft: #e3f4ec; --warn: #a35c00; --warn-soft: #fdf1df; --bad: #c4321f; --bad-soft: #fcebe8;
+    --shadow: 0 1px 2px rgba(15, 23, 34, .04), 0 8px 24px rgba(15, 23, 34, .06);
+    --shadow-lg: 0 24px 64px rgba(15, 23, 34, .18);
+    --radius: 18px;
+    --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  [hidden] { display: none !important; }
+  button, input, select, textarea { font-family: inherit; }
+  svg { flex-shrink: 0; }
+  a { color: var(--accent); font-weight: 600; text-decoration: none; }
+
+  /* Botones */
+  .btn { height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+         font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+         transition: transform .15s var(--ease), background .2s; white-space: nowrap; }
+  .btn:hover { background: var(--surface-2); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn-pri { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px rgba(27, 77, 216, .22); }
+  .btn-pri:hover { background: #1743bd; }
+  .btn-icono { width: 44px; padding: 0; }
+  .btn:focus-visible, .fila:focus-visible, .kpi:focus-visible, .seg button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .gira { animation: gira .8s linear infinite; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+
+  /* Logo */
+  .logo { width: 38px; height: 38px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+
+  /* Entrada */
+  .entrada { min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; }
+  .entrada-caja { width: 100%; max-width: 400px; background: var(--surface); border-radius: 24px; box-shadow: var(--shadow); padding: 32px 28px; animation: sube .5s var(--ease); }
+  .entrada-caja .logo { width: 52px; height: 52px; border-radius: 16px; margin-bottom: 22px; }
+  .entrada-caja h1 { font-size: 26px; letter-spacing: -.025em; margin: 0; }
+  .entrada-caja p { color: var(--ink-2); margin: 6px 0 22px; }
+  .entrada-caja .btn { width: 100%; height: 54px; font-size: 16px; margin-top: 18px; border-radius: 14px; }
+  .error-txt { color: var(--bad); font-size: 14px; font-weight: 600; margin-top: 12px; min-height: 1em; }
+  @keyframes sube { from { transform: translateY(16px); opacity: 0; } }
+
+  /* Campo con etiqueta flotante */
+  .campo { position: relative; border: 1.5px solid var(--line); border-radius: 14px; background: var(--surface); transition: border-color .2s; }
+  .campo:focus-within { border-color: var(--accent); }
+  .campo input, .campo textarea { width: 100%; border: 0; outline: 0; background: transparent; font: 500 16px/1.35 var(--font); color: var(--ink); padding: 26px 16px 10px; resize: vertical; }
+  .campo label { position: absolute; left: 16px; top: 17px; color: var(--ink-3); font-weight: 500; pointer-events: none; transition: all .2s var(--ease); }
+  .campo input:focus + label, .campo input:not(:placeholder-shown) + label,
+  .campo textarea:focus + label, .campo textarea:not(:placeholder-shown) + label { top: 8px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+
+  /* Estructura */
+  .barra { position: sticky; top: 0; z-index: 5; background: rgba(245, 246, 248, .86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+           border-bottom: 1px solid var(--line); padding: calc(env(safe-area-inset-top, 0px) + 12px) 0 12px; }
+  .contenedor { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
+  .barra .contenedor { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .marca b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .marca small { color: var(--ink-3); font-size: 12px; font-weight: 500; }
+  .acciones { display: flex; gap: 8px; }
+
+  .cabeza { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 28px 0 20px; }
+  .cabeza h1 { font-size: 30px; letter-spacing: -.03em; margin: 0; line-height: 1.1; }
+  .cabeza p { margin: 6px 0 0; color: var(--ink-3); font-size: 14px; font-weight: 500; }
+
+  /* Indicadores */
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .kpi { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; border: 1.5px solid transparent; cursor: pointer; text-align: left;
+         transition: border-color .2s, transform .15s var(--ease); display: flex; flex-direction: column; gap: 4px; }
+  .kpi:hover { transform: translateY(-1px); }
+  .kpi.activo { border-color: var(--accent); }
+  .kpi span { color: var(--ink-2); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .kpi b { font-size: 30px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+  .punto.Pendiente { background: var(--warn); } .punto.Aprobado { background: var(--ok); } .punto.Rechazado { background: var(--bad); } .punto.hoy { background: var(--accent); }
+
+  /* Herramientas */
+  .herr { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0 14px; align-items: center; }
+  .buscar { flex: 1 1 280px; position: relative; }
+  .buscar svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--ink-3); }
+  .buscar input { width: 100%; height: 46px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); padding: 0 14px 0 42px; font: 500 15px var(--font); color: var(--ink); outline: 0; }
+  .buscar input:focus { border-color: var(--accent); }
+  .seg { display: inline-flex; background: var(--surface-2); border-radius: 14px; padding: 4px; gap: 2px; overflow-x: auto; max-width: 100%; }
+  .seg button { height: 38px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: var(--ink-2); font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
+  .seg button.activo { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(15, 23, 34, .1); }
+  .selector { height: 46px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); padding: 0 12px; font: 600 14px var(--font); color: var(--ink); }
+
+  /* Lista */
+  .lista { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 40px; }
+  .lista-cab, .fila { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.2fr) minmax(0, 1.2fr) 130px 120px 24px; gap: 16px; align-items: center; padding: 0 20px; }
+  .lista-cab { height: 44px; font-size: 12px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); }
+  .fila { min-height: 72px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .15s; animation: aparece .35s var(--ease) both; }
+  .fila:last-child { border-bottom: 0; }
+  .fila:hover { background: #f9fafc; }
+  .fila.sel { background: var(--accent-soft); }
+  @keyframes aparece { from { opacity: 0; transform: translateY(4px); } }
+  .cliente { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .avatar { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+  .cliente b, .celda b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cliente small, .celda small { display: block; color: var(--ink-3); font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .celda { min-width: 0; }
+  .alerta { color: var(--bad); font-size: 12px; font-weight: 700; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill.Pendiente { background: var(--warn-soft); color: var(--warn); }
+  .pill.Aprobado { background: var(--ok-soft); color: var(--ok); }
+  .pill.Rechazado { background: var(--bad-soft); color: var(--bad); }
+  .chev { color: var(--ink-3); }
+  .vacio { padding: 56px 20px; text-align: center; color: var(--ink-2); }
+  .vacio b { display: block; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
+
+  /* Panel de detalle */
+  .velo { position: fixed; inset: 0; background: rgba(10, 14, 20, .32); z-index: 10; animation: fundido .25s ease; }
+  .panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, 100%); background: var(--bg); z-index: 11; box-shadow: var(--shadow-lg);
+           display: flex; flex-direction: column; animation: desliza .38s var(--ease); }
+  @keyframes fundido { from { opacity: 0; } }
+  @keyframes desliza { from { transform: translateX(40px); opacity: 0; } }
+  .panel-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: calc(env(safe-area-inset-top, 0px) + 20px) 24px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .panel-cab h2 { margin: 0; font-size: 22px; letter-spacing: -.02em; line-height: 1.2; overflow-wrap: anywhere; }
+  .panel-cab small { display: block; color: var(--ink-3); font-weight: 500; margin-top: 4px; }
+  .panel-cuerpo { flex: 1; overflow-y: auto; padding: 20px 24px 28px; }
+  .seccion { font-size: 12px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; margin: 24px 2px 10px; }
+  .seccion:first-child { margin-top: 0; }
+  .tarjeta { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .foto { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .foto-marco { aspect-ratio: 4 / 3; background: var(--surface-2); display: grid; place-items: center; text-align: center; color: var(--ink-3); font-size: 13px; font-weight: 500; padding: 10px; position: relative; }
+  .foto-marco img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; animation: fundido .3s ease; }
+  .foto-pie { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; font-size: 13px; font-weight: 700; }
+  .cargando { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: gira .8s linear infinite; margin: 0 auto 8px; }
+  .datos { display: grid; grid-template-columns: 1fr 1fr; }
+  .dato { padding: 14px 18px; border-bottom: 1px solid var(--line); min-width: 0; }
+  .dato:nth-child(odd) { border-right: 1px solid var(--line); }
+  .dato.ancho { grid-column: 1 / -1; border-right: 0; }
+  .dato span { display: block; font-size: 12px; font-weight: 600; color: var(--ink-3); margin-bottom: 2px; }
+  .dato b { font-weight: 600; overflow-wrap: anywhere; }
+  .datos .dato:nth-last-child(-n+1) { border-bottom: 0; }
+  .mapa { height: 230px; border-radius: var(--radius) var(--radius) 0 0; overflow: hidden; background: var(--surface-2); }
+  .mapa iframe { width: 100%; height: 100%; border: 0; }
+  .mapa-pie { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; font-size: 14px; }
+  .mapa-pie span { color: var(--ink-2); font-weight: 500; }
+  .estados { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .estados button { height: 48px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 700; font-size: 14px; color: var(--ink-2); cursor: pointer; transition: all .2s; }
+  .estados button.Aprobado.activo { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+  .estados button.Pendiente.activo { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+  .estados button.Rechazado.activo { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); }
+  .panel-pie { padding: 14px 24px calc(env(safe-area-inset-bottom, 0px) + 14px); background: var(--surface); border-top: 1px solid var(--line); display: flex; gap: 10px; }
+  .panel-pie .btn { flex: 1; height: 50px; font-size: 15px; border-radius: 14px; }
+
+  /* Visor de fotos */
+  .visor { position: fixed; inset: 0; z-index: 30; background: rgba(8, 10, 14, .92); display: flex; align-items: center; justify-content: center; padding: 16px; cursor: zoom-out; animation: fundido .2s ease; }
+  .visor img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); transform: translateX(-50%); z-index: 40; background: var(--ink); color: #fff;
+           padding: 12px 18px; border-radius: 14px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow-lg); max-width: calc(100% - 32px); width: max-content; text-align: center; animation: sube .3s var(--ease); }
+
+  @media (max-width: 900px) {
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lista-cab { display: none; }
+    .fila { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "cli est" "sub fec"; row-gap: 6px; column-gap: 10px; padding: 14px 16px; }
+    .fila .c-cli { grid-area: cli; } .fila .c-est { grid-area: est; justify-self: end; }
+    .fila .c-zona, .fila .chev { display: none; }
+    .fila .c-ven { grid-area: sub; padding-left: 52px; min-width: 0; }
+    .fila .c-ven b { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+    .fila .c-fec { grid-area: fec; justify-self: end; }
+    .fila .c-fec small { font-size: 12px; }
+    .seg { display: flex; width: 100%; }
+    .seg button { flex: 1; padding: 0 6px; font-size: 13px; }
+    .acciones .txt { display: none; }
+    .acciones .btn { width: 44px; padding: 0; }
+    .contenedor { padding: 0 16px; }
+    .cabeza h1 { font-size: 26px; }
+  }
+  @media (max-width: 520px) {
+    .cliente b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .datos { grid-template-columns: 1fr; }
+    .fotos { gap: 10px; }
+    .dato:nth-child(odd) { border-right: 0; }
+    .panel-cab, .panel-cuerpo { padding-left: 16px; padding-right: 16px; }
+    .panel-pie { padding-left: 16px; padding-right: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Clientes nuevos · <span class="empresa"></span></h1>
-  <div id="acciones" style="display:none">
-    <button id="btnActualizar" onclick="cargar()">↻ Actualizar</button>
-    <button onclick="abrirHoja()">Abrir en Google Sheets</button>
-  </div>
-</header>
 
-<div id="login">
-  <h2>Portal de oficina</h2>
-  <input type="password" id="clave" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()">
-  <button id="btnEntrar" onclick="entrar()" style="width:100%;background:var(--azul);color:#fff;border:0;font-size:16px;padding:12px">Entrar</button>
-  <p id="loginErr" class="alerta"></p>
+<!-- Entrada -->
+<div class="entrada" id="login">
+  <div class="entrada-caja">
+    <div class="logo"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M9.5 9.5h5M12 7v5"/></svg></div>
+    <h1>Panel de oficina</h1>
+    <p><span class="empresa">Productos BIPA</span> · Clientes nuevos</p>
+    <div class="campo"><input type="password" id="clave" placeholder=" " autocomplete="current-password"><label for="clave">Clave de oficina</label></div>
+    <button class="btn btn-pri" id="btnEntrar" type="button">Entrar</button>
+    <div class="error-txt" id="loginErr"></div>
+  </div>
 </div>
 
-<main id="app" style="display:none">
-  <div class="resumen" id="resumen"></div>
-  <div class="barra">
-    <input id="buscar" placeholder="Buscar por nombre, RIF, vendedor, zona..." oninput="pintar()">
-    <select id="filtroEstado" onchange="pintar()">
-      <option value="">Todos los estados</option><option>Pendiente</option><option>Aprobado</option><option>Rechazado</option>
-    </select>
-    <select id="filtroVendedor" onchange="pintar()"><option value="">Todos los vendedores</option></select>
-  </div>
-  <div class="tabla">
-    <table>
-      <thead><tr><th>Fecha</th><th>Cliente</th><th>RIF</th><th>Vendedor</th><th>Contacto</th><th>Zona</th><th>Ubicación</th><th>Estado</th><th></th></tr></thead>
-      <tbody id="filas"><tr><td colspan="9">Cargando...</td></tr></tbody>
-    </table>
-  </div>
-</main>
+<!-- Aplicación -->
+<div id="app" hidden>
+  <header class="barra">
+    <div class="contenedor">
+      <div class="marca">
+        <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M9.5 9.5h5M12 7v5"/></svg></div>
+        <div style="min-width:0"><b class="empresa">Productos BIPA</b><small>Panel de oficina</small></div>
+      </div>
+      <div class="acciones">
+        <button class="btn" id="btnActualizar" type="button" title="Actualizar">
+          <svg id="icoAct" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg><span class="txt">Actualizar</span>
+        </button>
+        <button class="btn" id="btnHoja" type="button" title="Abrir en Google Sheets">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M4 9h16M4 15h16M10 9v12"/></svg><span class="txt">Google Sheets</span>
+        </button>
+        <button class="btn btn-icono" id="btnSalir" type="button" title="Salir" aria-label="Salir">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
 
-<div id="visor" onclick="this.style.display='none'"><img id="visorImg" alt="Foto ampliada"></div>
-<div id="modal" onclick="if(event.target===this)cerrar()"><div class="caja" id="modalCaja"></div></div>
+  <main class="contenedor">
+    <div class="cabeza">
+      <div><h1>Clientes nuevos</h1><p id="actualizado">Cargando…</p></div>
+    </div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="herr">
+      <div class="buscar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="buscar" type="search" placeholder="Buscar cliente, vendedor, zona, tipo…">
+      </div>
+      <div class="seg" id="segEstado">
+        <button type="button" data-e="" class="activo">Todos</button>
+        <button type="button" data-e="Pendiente">Pendientes</button>
+        <button type="button" data-e="Aprobado">Aprobados</button>
+        <button type="button" data-e="Rechazado">Rechazados</button>
+      </div>
+      <select class="selector" id="filtroVendedor" aria-label="Vendedor"><option value="">Todos los vendedores</option></select>
+    </div>
+
+    <div class="lista">
+      <div class="lista-cab"><div>Cliente</div><div>Vendedor</div><div>Zona</div><div>Fecha</div><div>Estado</div><div></div></div>
+      <div id="filas"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Ficha del cliente -->
+<div id="ficha" hidden>
+  <div class="velo" id="velo"></div>
+  <aside class="panel" role="dialog" aria-labelledby="fNombre">
+    <div class="panel-cab">
+      <div style="min-width:0"><h2 id="fNombre"></h2><small id="fSub"></small></div>
+      <button class="btn btn-icono" id="btnCerrar" type="button" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="panel-cuerpo" id="fCuerpo"></div>
+    <div class="panel-pie">
+      <button class="btn btn-pri" id="btnGuardar" type="button">Guardar revisión</button>
+    </div>
+  </aside>
+</div>
+
+<div class="visor" id="visor" hidden><img id="visorImg" alt="Foto ampliada"></div>
 
 <script>
-  var CLAVE = '', DATOS = [];
-  try { CLAVE = sessionStorage.getItem('clave') || ''; } catch (e) {}
-  if (CLAVE) entrar(CLAVE);
+  var CLAVE = '', DATOS = [], FILTRO = { estado: '', vendedor: '', q: '' }, ACTUAL = null, ESTADO_SEL = '', refresco = null, ULTIMA = null;
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function toast(msg) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2600); }
 
-  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  var COLORES = [['#e8eefc', '#1b4dd8'], ['#e3f4ec', '#12805c'], ['#fdf1df', '#a35c00'], ['#f1e9fb', '#6b3fb8'], ['#e4f3f6', '#126b80'], ['#fbe9ef', '#b0325a']];
+  function avatar(nombre) {
+    var t = String(nombre || '?').trim(), h = 0; for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0;
+    var c = COLORES[h % COLORES.length];
+    var ini = t.split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0]; }).join('').toUpperCase() || '?';
+    return '<div class="avatar" style="background:' + c[0] + ';color:' + c[1] + '">' + esc(ini) + '</div>';
+  }
 
-  var refresco = null;
-
-  // Guarda la última lista en esta computadora para mostrarla al instante la próxima vez
+  /* ---------- Entrada y caché ---------- */
   async function huella(c) {
     try {
       var h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('registro-clientes:' + c));
@@ -110,145 +311,196 @@
   function guardarCache(d) { huella(CLAVE).then(function (h) { try { if (h) localStorage.setItem('oficina-cache', JSON.stringify({ h: h, d: d })); } catch (e) {} }); }
 
   function mostrarApp() {
-    document.getElementById('login').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    document.getElementById('acciones').style.display = 'block';
-    if (!refresco) refresco = setInterval(cargar, 60000); // se actualiza solo cada minuto
+    $('login').hidden = true; $('app').hidden = false;
+    if (!refresco) refresco = setInterval(function () { cargar(true); }, 60000);
   }
-
   function actualizando(si) {
-    var b = document.getElementById('btnActualizar');
-    if (b) { b.disabled = si; b.textContent = si ? 'Actualizando...' : '↻ Actualizar'; }
+    $('btnActualizar').disabled = si;
+    $('icoAct').classList.toggle('gira', si);
+    if (si) $('actualizado').textContent = 'Actualizando…';
+    else pintarHora();
+  }
+  function pintarHora() {
+    if (!ULTIMA) return;
+    $('actualizado').textContent = 'Actualizado a las ' + ULTIMA.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) + ' · se actualiza solo cada minuto';
   }
 
   async function entrar(guardada) {
-    CLAVE = guardada || document.getElementById('clave').value;
-    var btn = document.getElementById('btnEntrar'), err = document.getElementById('loginErr');
-    err.textContent = '';
+    CLAVE = guardada || $('clave').value;
+    if (!CLAVE) { $('loginErr').textContent = 'Escribe la clave.'; return; }
+    var btn = $('btnEntrar'); $('loginErr').textContent = '';
     var cache = leerCache(), h = await huella(CLAVE), rapido = !!(cache && h && cache.h === h);
     if (rapido) { mostrarApp(); recibir(cache.d); actualizando(true); }
-    else { btn.disabled = true; btn.textContent = 'Entrando...'; }
+    else { btn.disabled = true; btn.innerHTML = '<svg class="gira" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg> Entrando'; }
     google.script.run.withSuccessHandler(function (d) {
       try { sessionStorage.setItem('clave', CLAVE); } catch (e) {}
-      mostrarApp(); recibir(d); guardarCache(d); actualizando(false);
+      ULTIMA = new Date(); mostrarApp(); recibir(d); guardarCache(d); actualizando(false);
       btn.disabled = false; btn.textContent = 'Entrar';
     }).withFailureHandler(function (e) {
-      actualizando(false);
-      btn.disabled = false; btn.textContent = 'Entrar';
-      if (rapido && e.message !== 'Clave incorrecta') return; // sin internet: se queda con la lista guardada
+      actualizando(false); btn.disabled = false; btn.textContent = 'Entrar';
+      if (rapido && e.message !== 'Clave incorrecta') { toast('Sin conexión: mostrando la última lista guardada'); return; }
       try { sessionStorage.removeItem('clave'); localStorage.removeItem('oficina-cache'); } catch (x) {}
-      document.getElementById('app').style.display = 'none';
-      document.getElementById('acciones').style.display = 'none';
-      document.getElementById('login').style.display = 'block';
-      err.textContent = e.message;
+      $('app').hidden = true; $('login').hidden = false; $('loginErr').textContent = e.message;
     }).listarClientes(CLAVE);
   }
+  $('btnEntrar').onclick = function () { entrar(); };
+  $('clave').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrar(); });
+  $('btnSalir').onclick = function () {
+    try { sessionStorage.removeItem('clave'); } catch (e) {}
+    clearInterval(refresco); refresco = null; CLAVE = ''; $('clave').value = '';
+    $('app').hidden = true; $('login').hidden = false;
+  };
 
-  function cargar() {
+  function cargar(silencioso) {
     actualizando(true);
     google.script.run
-      .withSuccessHandler(function (d) { recibir(d); guardarCache(d); actualizando(false); })
-      .withFailureHandler(function () { actualizando(false); })
+      .withSuccessHandler(function (d) { ULTIMA = new Date(); recibir(d); guardarCache(d); actualizando(false); })
+      .withFailureHandler(function (e) { actualizando(false); if (!silencioso) toast('No se pudo actualizar: ' + e.message); })
       .listarClientes(CLAVE);
   }
+  $('btnActualizar').onclick = function () { cargar(false); };
+  $('btnHoja').onclick = function () {
+    var w = window.open('', '_blank');
+    google.script.run.withSuccessHandler(function (u) { if (w) w.location = u; else location.href = u; })
+      .withFailureHandler(function (e) { if (w) w.close(); toast(e.message); }).urlHoja(CLAVE);
+  };
 
+  /* ---------- Lista ---------- */
   function recibir(d) {
-    DATOS = d;
-    var sel = document.getElementById('filtroVendedor'), actual = sel.value;
-    var vendedores = Array.from(new Set(d.map(function (x) { return x['Vendedor']; }))).sort();
-    sel.innerHTML = '<option value="">Todos los vendedores</option>' + vendedores.map(function (v) { return '<option>' + esc(v) + '</option>'; }).join('');
+    DATOS = d || [];
+    var sel = $('filtroVendedor'), actual = sel.value;
+    var vend = Array.from(new Set(DATOS.map(function (x) { return x['Vendedor']; }).filter(Boolean))).sort();
+    sel.innerHTML = '<option value="">Todos los vendedores</option>' + vend.map(function (v) { return '<option>' + esc(v) + '</option>'; }).join('');
     sel.value = actual;
     pintar();
+    if (ACTUAL) { var x = buscarFila(ACTUAL); if (x) pintarCabecera(x); }
   }
+  function buscarFila(f) { return DATOS.filter(function (r) { return r.fila === f; })[0]; }
 
   function pintar() {
-    var q = document.getElementById('buscar').value.toLowerCase();
-    var fe = document.getElementById('filtroEstado').value, fv = document.getElementById('filtroVendedor').value;
+    var hoy = new Date().toDateString(), c = { total: DATOS.length, Pendiente: 0, Aprobado: 0, hoy: 0 };
+    DATOS.forEach(function (x) { if (c[x['Estado']] !== undefined) c[x['Estado']]++; if (x.fechaISO && new Date(x.fechaISO).toDateString() === hoy) c.hoy++; });
+    var kp = [['', 'Total registrados', c.total, ''], ['Pendiente', 'Por revisar', c.Pendiente, 'Pendiente'], ['Aprobado', 'Aprobados', c.Aprobado, 'Aprobado'], ['hoy', 'Registrados hoy', c.hoy, 'hoy']];
+    $('kpis').innerHTML = kp.map(function (k) {
+      var act = k[0] !== 'hoy' && FILTRO.estado === k[0] && (k[0] !== '' || true);
+      return '<button type="button" class="kpi' + (k[0] !== 'hoy' && FILTRO.estado === k[0] ? ' activo' : '') + '" data-k="' + k[0] + '"><span><i class="punto ' + k[3] + '"></i>' + k[1] + '</span><b>' + k[2] + '</b></button>';
+    }).join('');
+    document.querySelectorAll('.kpi').forEach(function (b) { b.onclick = function () { if (b.dataset.k !== 'hoy') ponerEstado(b.dataset.k); }; });
+
+    var q = FILTRO.q.toLowerCase();
     var lista = DATOS.filter(function (x) {
-      return (!fe || x['Estado'] === fe) && (!fv || x['Vendedor'] === fv) &&
-        (!q || [x['Nombre comercial'], x['Razón social'], x['RIF'], x['Vendedor'], x['Zona / Ciudad'], x['Persona de contacto'], x['Tipo de cliente'], x['Interés']].join(' ').toLowerCase().indexOf(q) >= 0);
+      return (!FILTRO.estado || x['Estado'] === FILTRO.estado) && (!FILTRO.vendedor || x['Vendedor'] === FILTRO.vendedor) &&
+        (!q || [x['Nombre comercial'], x['Razón social'], x['RIF'], x['Vendedor'], x['Zona / Ciudad'], x['Persona de contacto'], x['Teléfono'], x['Tipo de cliente'], x['Interés']].join(' ').toLowerCase().indexOf(q) >= 0);
     });
-    var hoy = new Date().toDateString();
-    var c = { total: DATOS.length, pend: 0, hoy: 0 };
-    DATOS.forEach(function (x) { if (x['Estado'] === 'Pendiente') c.pend++; if ((x.fechaISO && new Date(x.fechaISO).toDateString()) === hoy) c.hoy++; });
-    document.getElementById('resumen').innerHTML =
-      '<div class="kpi"><b>' + c.total + '</b><span>Total registrados</span></div>' +
-      '<div class="kpi"><b>' + c.pend + '</b><span>Pendientes por revisar</span></div>' +
-      '<div class="kpi"><b>' + lista.length + '</b><span>En esta vista</span></div>';
-    document.getElementById('filas').innerHTML = lista.length ? lista.map(function (x) {
-      return '<tr>' +
-        '<td>' + esc(x['Fecha']) + '</td>' +
-        '<td><b>' + esc(x['Nombre comercial']) + '</b><br><span style="color:#667085">' + esc(x['Razón social']) + '</span>' +
-          (x['Nota oficina'] ? '<div class="alerta">' + esc(x['Nota oficina']) + '</div>' : '') + '</td>' +
-        '<td>' + esc(x['RIF']) + '</td>' +
-        '<td>' + esc(x['Vendedor']) + '</td>' +
-        '<td>' + esc(x['Persona de contacto']) + '<br>' + esc(x['Teléfono']) + '</td>' +
-        '<td>' + esc(x['Zona / Ciudad']) + '</td>' +
-        '<td>' + (x['Google Maps'] ? '<a target="_blank" href="' + esc(x['Google Maps']) + '">📍 Mapa</a>' : '—') + '</td>' +
-        '<td><span class="estado ' + esc(x['Estado']) + '">' + esc(x['Estado']) + '</span></td>' +
-        '<td><button onclick="ver(' + x.fila + ')">Ver</button></td>' +
-      '</tr>';
-    }).join('') : '<tr><td colspan="9">No hay registros.</td></tr>';
-  }
-
-  function ver(fila) {
-    var x = DATOS.filter(function (r) { return r.fila === fila; })[0];
-    var campos = ['ID', 'Fecha', 'Vendedor', 'Tipo de cliente', 'Interés', 'RIF', 'Razón social', 'Persona de contacto', 'Teléfono', 'Correo', 'Dirección', 'Zona / Ciudad', 'Precisión GPS (m)', 'Observaciones'];
-    // Coordenadas tomadas del enlace de Google Maps (más confiable que las columnas)
-    var mm = String(x['Google Maps'] || '').match(/q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-    var mapa = mm
-      ? '<iframe class="mapa" loading="lazy" src="https://maps.google.com/maps?q=' + mm[1] + ',' + mm[2] + '&z=17&output=embed"></iframe>' : '';
-    function cajaFoto(id, titulo, url) {
-      return '<div class="foto-caja"><b>' + titulo + '</b><div class="foto-marco" id="' + id + '">' +
-        (url ? '<div><div class="girando"></div>Cargando foto...</div>' : 'Sin foto') + '</div>' +
-        (url ? '<div class="foto-pie"><span class="muted">Toca la foto para ampliarla</span><a target="_blank" href="' + esc(url) + '">Abrir en Drive</a></div>' : '') + '</div>';
-    }
-    document.getElementById('modalCaja').innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">' + esc(x['Nombre comercial']) + '</h2><button onclick="cerrar()">✕</button></div>' +
-      '<div class="fotos">' + cajaFoto('imgRif', 'Foto RIF', x['Foto RIF']) + cajaFoto('imgLocal', 'Foto local', x['Foto local']) + '</div>' +
-      '<div class="detalle">' + campos.map(function (k) { return '<div><span>' + k + '</span>' + esc(x[k] || '—') + '</div>'; }).join('') + '</div>' +
-      '<h3>Ubicación</h3>' + (x['Google Maps'] ? '<a target="_blank" href="' + esc(x['Google Maps']) + '">Abrir en Google Maps</a>' : 'Sin ubicación') + mapa +
-      '<h3>Revisión de oficina</h3>' +
-      '<textarea id="nota" style="width:100%;min-height:60px;font-size:14px;padding:8px">' + esc(x['Nota oficina']) + '</textarea>' +
-      '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">' +
-        ['Aprobado', 'Pendiente', 'Rechazado'].map(function (e) { return '<button class="estado ' + e + '" style="padding:10px 16px;font-size:14px" onclick="estado(' + fila + ',\'' + e + '\')">Marcar ' + e + '</button>'; }).join('') +
+    $('filas').innerHTML = lista.length ? lista.map(function (x, i) {
+      var sub = [x['Tipo de cliente'], x['Persona de contacto']].filter(Boolean).join(' · ') || x['Teléfono'] || '';
+      return '<div class="fila' + (ACTUAL === x.fila ? ' sel' : '') + '" tabindex="0" role="button" data-f="' + x.fila + '" style="animation-delay:' + Math.min(i, 12) * 25 + 'ms">' +
+        '<div class="cliente c-cli">' + avatar(x['Nombre comercial']) + '<div style="min-width:0"><b>' + esc(x['Nombre comercial'] || 'Sin nombre') + '</b><small>' + esc(sub) + '</small>' +
+          (x['Nota oficina'] && /^OJO/.test(x['Nota oficina']) ? '<div class="alerta">' + esc(x['Nota oficina']) + '</div>' : '') + '</div></div>' +
+        '<div class="celda c-ven"><b>' + esc(x['Vendedor']) + '</b></div>' +
+        '<div class="celda c-zona"><small>' + esc(x['Zona / Ciudad'] || '—') + '</small></div>' +
+        '<div class="celda c-fec"><small>' + esc(x['Fecha']) + '</small></div>' +
+        '<div class="c-est"><span class="pill ' + esc(x['Estado']) + '">' + esc(x['Estado']) + '</span></div>' +
+        '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>' +
       '</div>';
-    document.getElementById('modal').style.display = 'block';
-    [['imgRif', 'Foto RIF'], ['imgLocal', 'Foto local']].forEach(function (p) {
-      if (x[p[1]]) cargarFoto(p[0], x[p[1]]);
+    }).join('') : '<div class="vacio"><b>' + (DATOS.length ? 'Nada coincide con el filtro' : 'Todavía no hay clientes') + '</b>' +
+      (DATOS.length ? 'Prueba con otra búsqueda o quita los filtros.' : 'Cuando un vendedor registre uno, aparece aquí solo.') + '</div>';
+    document.querySelectorAll('.fila').forEach(function (r) {
+      r.onclick = function () { abrir(+r.dataset.f); };
+      r.onkeydown = function (e) { if (e.key === 'Enter') abrir(+r.dataset.f); };
     });
   }
+  function ponerEstado(e) {
+    FILTRO.estado = e;
+    document.querySelectorAll('#segEstado button').forEach(function (b) { b.classList.toggle('activo', b.dataset.e === e); });
+    pintar();
+  }
+  document.querySelectorAll('#segEstado button').forEach(function (b) { b.onclick = function () { ponerEstado(b.dataset.e); }; });
+  $('buscar').addEventListener('input', function () { FILTRO.q = this.value; pintar(); });
+  $('filtroVendedor').onchange = function () { FILTRO.vendedor = this.value; pintar(); };
 
-  var FOTOS = {}; // fotos ya descargadas, para no volver a pedirlas
+  /* ---------- Ficha ---------- */
+  function pintarCabecera(x) {
+    $('fNombre').textContent = x['Nombre comercial'] || 'Sin nombre';
+    $('fSub').textContent = 'Registrado por ' + (x['Vendedor'] || '—') + ' · ' + (x['Fecha'] || '');
+  }
+  function abrir(fila) {
+    var x = buscarFila(fila); if (!x) return;
+    ACTUAL = fila; ESTADO_SEL = x['Estado'] || 'Pendiente';
+    pintarCabecera(x);
+    var mm = String(x['Google Maps'] || '').match(/q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    function foto(id, titulo, url) {
+      return '<div class="foto"><div class="foto-marco" id="' + id + '">' + (url ? '<div><div class="cargando"></div>Cargando foto…</div>' : 'Sin foto') + '</div>' +
+        '<div class="foto-pie"><span>' + titulo + '</span>' + (url ? '<a target="_blank" rel="noopener" href="' + esc(url) + '">Abrir ↗</a>' : '') + '</div></div>';
+    }
+    function dato(k, etiqueta, ancho) { return '<div class="dato' + (ancho ? ' ancho' : '') + '"><span>' + (etiqueta || k) + '</span><b>' + (esc(x[k]) || '—') + '</b></div>'; }
+    var tel = String(x['Teléfono'] || '').replace(/[^\d+]/g, '');
+    $('fCuerpo').innerHTML =
+      '<div class="seccion">Fotos</div><div class="fotos">' + foto('imgRif', 'RIF', x['Foto RIF']) + foto('imgLocal', 'Local', x['Foto local']) + '</div>' +
+      '<div class="seccion">Cliente</div><div class="tarjeta datos">' +
+        dato('Tipo de cliente') + dato('Interés') + dato('Persona de contacto', 'Contacto') +
+        '<div class="dato"><span>Teléfono</span><b>' + (tel ? '<a href="tel:' + esc(tel) + '">' + esc(x['Teléfono']) + '</a>' : '—') + '</b></div>' +
+        dato('Correo') + dato('Zona / Ciudad', 'Zona') + dato('Dirección', null, true) + dato('Observaciones', null, true) +
+        dato('RIF') + dato('Razón social') +
+      '</div>' +
+      '<div class="seccion">Ubicación</div><div class="tarjeta">' +
+        (mm ? '<div class="mapa"><iframe loading="lazy" title="Mapa" src="https://maps.google.com/maps?q=' + mm[1] + ',' + mm[2] + '&z=17&output=embed"></iframe></div>' : '') +
+        '<div class="mapa-pie"><span>' + (x['Precisión GPS (m)'] ? 'Precisión ±' + esc(x['Precisión GPS (m)']) + ' m' : (x['Google Maps'] ? 'Enlace de Google Maps' : 'Sin ubicación')) + '</span>' +
+        (x['Google Maps'] ? '<a target="_blank" rel="noopener" href="' + esc(x['Google Maps']) + '">Cómo llegar →</a>' : '') + '</div></div>' +
+      '<div class="seccion">Revisión de oficina</div>' +
+      '<div class="estados">' + ['Aprobado', 'Pendiente', 'Rechazado'].map(function (e) { return '<button type="button" class="' + e + (ESTADO_SEL === e ? ' activo' : '') + '" data-e="' + e + '">' + e + '</button>'; }).join('') + '</div>' +
+      '<div class="campo" style="margin-top:12px"><textarea id="nota" rows="3" placeholder=" ">' + esc(x['Nota oficina']) + '</textarea><label for="nota">Nota interna</label></div>' +
+      '<div class="dato ancho" style="padding:14px 2px 0;border:0"><span>Código</span><b>' + esc(x['ID']) + '</b></div>';
+    document.querySelectorAll('.estados button').forEach(function (b) {
+      b.onclick = function () { ESTADO_SEL = b.dataset.e; document.querySelectorAll('.estados button').forEach(function (o) { o.classList.toggle('activo', o === b); }); };
+    });
+    $('ficha').hidden = false; document.body.style.overflow = 'hidden'; $('fCuerpo').scrollTop = 0;
+    document.querySelectorAll('.fila').forEach(function (r) { r.classList.toggle('sel', +r.dataset.f === fila); });
+    if (x['Foto RIF']) cargarFoto('imgRif', x['Foto RIF']);
+    if (x['Foto local']) cargarFoto('imgLocal', x['Foto local']);
+  }
+  function cerrar() {
+    $('ficha').hidden = true; document.body.style.overflow = ''; ACTUAL = null;
+    document.querySelectorAll('.fila.sel').forEach(function (r) { r.classList.remove('sel'); });
+  }
+  $('btnCerrar').onclick = cerrar; $('velo').onclick = cerrar;
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if (!$('visor').hidden) $('visor').hidden = true; else if (!$('ficha').hidden) cerrar(); } });
+
+  var FOTOS = {};
   function cargarFoto(id, url) {
     function poner(src) {
-      var marco = document.getElementById(id); if (!marco) return;
-      marco.innerHTML = '';
+      var m = $(id); if (!m) return; m.innerHTML = '';
       var img = document.createElement('img'); img.src = src; img.alt = 'Foto';
-      img.onclick = function () { document.getElementById('visorImg').src = src; document.getElementById('visor').style.display = 'flex'; };
-      marco.appendChild(img);
+      img.onclick = function () { $('visorImg').src = src; $('visor').hidden = false; };
+      m.appendChild(img);
     }
     if (FOTOS[url]) return poner(FOTOS[url]);
     google.script.run
       .withSuccessHandler(function (src) { FOTOS[url] = src; poner(src); })
       .withFailureHandler(function (e) {
-        var marco = document.getElementById(id); if (!marco) return;
-        marco.innerHTML = '<div>No se pudo cargar la foto (' + esc(e.message) + ').<br><a href="#" id="re' + id + '">Reintentar</a> o usa "Abrir en Drive".</div>';
-        document.getElementById('re' + id).onclick = function (ev) { ev.preventDefault(); marco.innerHTML = '<div><div class="girando"></div>Cargando foto...</div>'; cargarFoto(id, url); };
+        var m = $(id); if (!m) return;
+        m.innerHTML = '<div>No se pudo cargar (' + esc(e.message) + ')<br><a href="#" id="re' + id + '">Reintentar</a></div>';
+        $('re' + id).onclick = function (ev) { ev.preventDefault(); m.innerHTML = '<div><div class="cargando"></div>Cargando foto…</div>'; cargarFoto(id, url); };
       })
       .verFoto(CLAVE, url);
   }
+  $('visor').onclick = function () { $('visor').hidden = true; };
 
-  function estado(fila, e) {
-    var nota = document.getElementById('nota').value;
-    google.script.run.withSuccessHandler(function () { cerrar(); cargar(); })
-      .withFailureHandler(function (err) { alert(err.message); })
+  $('btnGuardar').onclick = function () {
+    var fila = ACTUAL, e = ESTADO_SEL, nota = $('nota').value, btn = this;
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    google.script.run
+      .withSuccessHandler(function () {
+        btn.disabled = false; btn.textContent = 'Guardar revisión';
+        var x = buscarFila(fila); if (x) { x['Estado'] = e; x['Nota oficina'] = nota; }
+        pintar(); cerrar(); toast('Guardado: ' + e); cargar(true);
+      })
+      .withFailureHandler(function (err) { btn.disabled = false; btn.textContent = 'Guardar revisión'; toast('No se pudo guardar: ' + err.message); })
       .cambiarEstado(CLAVE, fila, e, nota);
-  }
+  };
 
-  function cerrar() { document.getElementById('modal').style.display = 'none'; }
-
-  function abrirHoja() { google.script.run.withSuccessHandler(function (u) { window.open(u, '_blank'); }).urlHoja(CLAVE); }
+  try { CLAVE = sessionStorage.getItem('clave') || ''; } catch (e) {}
+  if (CLAVE) entrar(CLAVE);
 </script>
 </body>
 </html>
