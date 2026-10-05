@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Registrar cliente</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f5f6f8">
+<meta name="color-scheme" content="light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -38,15 +38,7 @@
     --radius: 18px;
     --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --ease: cubic-bezier(.2, .8, .2, 1);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0e1116; --surface: #171b22; --surface-2: #20252e; --ink: #eef1f5; --ink-2: #b4bcc8; --ink-3: #7c8696;
-      --line: #2a303a; --accent: #6f95ff; --accent-ink: #0b1020; --accent-soft: #1c2640;
-      --ok: #4cc79a; --ok-soft: #13291f; --warn: #f0b259; --warn-soft: #2d2211; --bad: #ff8a78; --bad-soft: #321a16;
-      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
-      color-scheme: dark;
-    }
+    color-scheme: light; /* siempre claro: se lee mejor en la calle */
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; }
