@@ -104,6 +104,15 @@
   .campo:focus-within::after { transform: scaleX(1); }
   .campo.error::after { background: var(--bad); transform: scaleX(1); }
   .req { color: var(--accent); }
+  /* Tipo de cliente: opciones según la línea */
+  .campo-opciones { padding: 14px 0 12px; border-bottom: 1px solid var(--line); }
+  .opc-tit { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 10px; }
+  .opciones { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opciones button { min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-2);
+                     font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; transition: all .15s; }
+  .opciones button.sel { border-color: var(--accent); background: var(--accent); color: #fff; }
+  .campo-opciones.error .opciones button:not(.sel) { border-color: var(--bad); }
+  .campo-opciones #campoOtro { margin-top: 6px; border-bottom: 0; }
   .ayuda-error { color: var(--bad); font-size: 13px; font-weight: 600; margin: 10px 4px 0; }
 
   /* Fotos */
@@ -285,19 +294,24 @@
     <section class="vista" data-paso="0">
       <div class="tarjeta">
         <div class="campo"><input id="c-nombre" name="nombre" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-nombre">Nombre del negocio <span class="req">*</span></label></div>
-        <div class="campo"><input id="c-contacto" name="contacto" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-contacto">Persona de contacto</label></div>
-        <div class="campo"><input id="c-telefono" name="telefono" type="tel" inputmode="tel" placeholder=" " enterkeyhint="next"><label for="c-telefono">Teléfono</label></div>
-        <div class="campo"><input id="c-correo" name="correo" type="email" inputmode="email" placeholder=" " enterkeyhint="next"><label for="c-correo">Correo</label></div>
+        <div class="campo"><input id="c-contacto" name="contacto" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-contacto">Persona de contacto <span class="req">*</span></label></div>
+        <div class="campo"><input id="c-telefono" name="telefono" type="tel" inputmode="tel" placeholder=" " enterkeyhint="next"><label for="c-telefono">Teléfono <span class="req">*</span></label></div>
+        <div class="campo"><input id="c-correo" name="correo" type="email" inputmode="email" placeholder=" " enterkeyhint="next"><label for="c-correo">Correo <span class="req">*</span></label></div>
       </div>
       <div class="etiqueta-seccion">Negocio</div>
       <div class="tarjeta">
-        <div class="campo"><input id="c-tipo" name="tipoCliente" placeholder=" " autocapitalize="sentences" enterkeyhint="next"><label for="c-tipo">Tipo de cliente</label></div>
-        <div class="campo"><textarea id="c-interes" name="interes" placeholder=" " rows="2" autocapitalize="sentences"></textarea><label for="c-interes">Interés</label></div>
+        <div class="campo-opciones" id="tipoCampo">
+          <span class="opc-tit" id="tipoTit">Tipo de cliente <span class="req">*</span></span>
+          <div class="opciones" id="opcTipo" role="radiogroup" aria-labelledby="tipoTit"></div>
+          <div class="campo" id="campoOtro" hidden><input id="c-tipoOtro" placeholder=" " autocapitalize="sentences" enterkeyhint="next"><label for="c-tipoOtro">¿Qué tipo de cliente es? <span class="req">*</span></label></div>
+          <input type="hidden" name="tipoCliente" id="c-tipo">
+        </div>
+        <div class="campo"><textarea id="c-interes" name="interes" placeholder=" " rows="2" autocapitalize="sentences"></textarea><label for="c-interes">Interés <span class="req">*</span></label></div>
       </div>
       <div class="etiqueta-seccion">Dirección</div>
       <div class="tarjeta">
-        <div class="campo"><input id="c-zona" name="zona" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-zona">Zona o ciudad</label></div>
-        <div class="campo"><textarea id="c-direccion" name="direccion" placeholder=" " rows="2"></textarea><label for="c-direccion">Dirección y punto de referencia</label></div>
+        <div class="campo"><input id="c-zona" name="zona" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-zona">Zona o ciudad <span class="req">*</span></label></div>
+        <div class="campo"><textarea id="c-direccion" name="direccion" placeholder=" " rows="2"></textarea><label for="c-direccion">Dirección y punto de referencia <span class="req">*</span></label></div>
       </div>
       <div class="ayuda-error" id="err0" hidden></div>
     </section>
@@ -340,7 +354,7 @@
 
       <div class="etiqueta-seccion">Observaciones</div>
       <div class="tarjeta">
-        <div class="campo"><textarea id="c-notas" name="notas" placeholder=" " rows="2"></textarea><label for="c-notas">Horario, tipo de negocio, productos de interés…</label></div>
+        <div class="campo"><textarea id="c-notas" name="notas" placeholder=" " rows="2"></textarea><label for="c-notas">Observaciones: horario, días de visita… (opcional)</label></div>
       </div>
 
       <div class="etiqueta-seccion">Resumen</div>
@@ -457,9 +471,38 @@
     LINEA = l; guardar('linea', l);
     document.body.classList.toggle('ritual', l === 'BIPA Ritual Sensorial');
     $('lineaNombre').textContent = l; $('lineaActual').hidden = !l;
+    pintarTipos();
     var sub = document.querySelector('.marca small'); if (sub) sub.textContent = l === 'BIPA Ritual Sensorial' ? 'BIPA Ritual Sensorial' : 'Productos BIPA';
     var tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = '#f5f6f8';
   }
+  /* Tipo de cliente según la línea */
+  function tiposDe(l) {
+    return l === 'BIPA Ritual Sensorial'
+      ? ['Supermercados y Autoservicios', 'Farmacias', 'Tiendas de Decoración y Hogar', 'Bodegones & Minimercados Premium', 'Spas y Centros Estéticos']
+      : ['Abastos y Bodegas', 'Canal Tradicional', 'Canal Moderno', 'Farmacias'];
+  }
+  function pintarTipos() {
+    var lista = tiposDe(LINEA).concat(['Otros']), v = $('c-tipo').value, sel = v;
+    if (/^Otros: /.test(v)) { sel = 'Otros'; $('c-tipoOtro').value = v.slice(7); }
+    else if (v && lista.indexOf(v) < 0) { sel = ''; $('c-tipo').value = ''; } // era de la otra línea
+    $('opcTipo').innerHTML = lista.map(function (t) {
+      return '<button type="button" role="radio" aria-checked="' + (t === sel) + '" class="' + (t === sel ? 'sel' : '') + '" data-t="' + esc(t) + '">' + esc(t) + '</button>';
+    }).join('');
+    $('campoOtro').hidden = sel !== 'Otros';
+    $('opcTipo').querySelectorAll('button').forEach(function (b) {
+      b.onclick = function () {
+        var t = b.dataset.t;
+        $('opcTipo').querySelectorAll('button').forEach(function (o) { o.classList.toggle('sel', o === b); o.setAttribute('aria-checked', o === b); });
+        $('tipoCampo').classList.remove('error'); $('err0').hidden = true;
+        $('campoOtro').hidden = t !== 'Otros';
+        if (t === 'Otros') { $('c-tipo').value = 'Otros: ' + $('c-tipoOtro').value.trim(); $('c-tipoOtro').focus(); }
+        else $('c-tipo').value = t;
+        $('c-tipo').dispatchEvent(new Event('input', { bubbles: true }));
+      };
+    });
+  }
+  $('c-tipoOtro').addEventListener('input', function () { $('c-tipo').value = 'Otros: ' + this.value.trim(); $('c-tipo').dispatchEvent(new Event('input', { bubbles: true })); });
+
   function elegirLinea() { $('elegir').hidden = false; }
   document.querySelectorAll('.opcion-linea').forEach(function (b) {
     b.onclick = function () {
@@ -475,6 +518,7 @@
   /* ---------- Borrador: no perder lo escrito si se cierra la app ---------- */
   var CAMPOS = ['nombre', 'contacto', 'telefono', 'correo', 'tipoCliente', 'interes', 'zona', 'direccion', 'notas', 'mapsLink'];
   try { var b = JSON.parse(leer('borrador') || '{}'); CAMPOS.forEach(function (k) { if (b[k]) f.elements[k].value = b[k]; }); } catch (e) {}
+  pintarTipos();
   f.addEventListener('input', function (e) {
     var b = {}; CAMPOS.forEach(function (k) { b[k] = f.elements[k].value; }); guardar('borrador', JSON.stringify(b));
     if (e.target.parentNode.classList) e.target.parentNode.classList.remove('error');
@@ -505,7 +549,19 @@
   }
   function validar(n) {
     $('err' + n).hidden = true;
-    if (n === 0 && !f.elements.nombre.value.trim()) return errorPaso(0, 'Escribe el nombre del negocio.', f.elements.nombre);
+    if (n === 0) {
+      var el = f.elements, vacio = function (k) { return !el[k].value.trim(); };
+      if (vacio('nombre')) return errorPaso(0, 'Escribe el nombre del negocio.', el.nombre);
+      if (vacio('contacto')) return errorPaso(0, 'Escribe la persona de contacto.', el.contacto);
+      if (el.telefono.value.replace(/\D/g, '').length < 10) return errorPaso(0, 'Escribe un teléfono completo, con código de área (ej. 0414 123 4567).', el.telefono);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(el.correo.value.trim())) return errorPaso(0, 'Escribe un correo válido (ej. nombre@gmail.com).', el.correo);
+      var tipo = $('c-tipo').value.trim();
+      if (!tipo) { $('tipoCampo').classList.add('error'); $('tipoCampo').scrollIntoView({ block: 'center', behavior: 'smooth' }); return errorPaso(0, 'Elige el tipo de cliente.'); }
+      if (tipo === 'Otros:') return errorPaso(0, 'Escribe qué tipo de cliente es.', $('c-tipoOtro'));
+      if (vacio('interes')) return errorPaso(0, 'Escribe el interés del cliente.', el.interes);
+      if (vacio('zona')) return errorPaso(0, 'Escribe la zona o ciudad.', el.zona);
+      if (vacio('direccion')) return errorPaso(0, 'Escribe la dirección y un punto de referencia.', el.direccion);
+    }
     if (n === 1) {
       if (!fotos.fotoRif) { $('tileRif').classList.add('error-foto'); return errorPaso(1, 'Falta la foto del RIF.'); }
       if (!fotos.fotoLocal) { $('tileLocal').classList.add('error-foto'); return errorPaso(1, 'Falta la foto del local.'); }
@@ -524,7 +580,9 @@
   $('btnAtras').onclick = function () { if (paso > 0) ir(paso - 1, true); };
   $('btnEnviar').onclick = function () {
     if (!validar(paso)) return;
-    if (paso < 2) ir(paso + 1); else enviar();
+    if (paso < 2) return ir(paso + 1);
+    for (var i = 0; i < 2; i++) if (!validar(i)) return ir(i); // nada se envía incompleto
+    enviar();
   };
 
   /* ---------- Fotos ---------- */
@@ -692,7 +750,7 @@
   setInterval(function () { if (navigator.onLine !== false) Cola.todos().then(function (l) { if (l.length) enviarPendientes(); }).catch(function () {}); }, 45000);
 
   $('btnOtro').onclick = function () {
-    var v = $('vendedor').value; f.reset(); $('vendedor').value = v; try { localStorage.removeItem('borrador'); } catch (e) {}
+    var v = $('vendedor').value; f.reset(); $('vendedor').value = v; $('c-tipo').value = ''; $('c-tipoOtro').value = ''; pintarTipos(); try { localStorage.removeItem('borrador'); } catch (e) {}
     gps = null; fotos = { fotoRif: null, fotoLocal: null };
     ['tileRif', 'tileLocal'].forEach(function (id) { var t = $(id); t.classList.remove('lista'); t.querySelectorAll('img,.sello').forEach(function (n) { n.remove(); }); });
     $('radar').className = 'radar'; $('ubicTitulo').textContent = 'Ubicación del local'; $('ubicTexto').textContent = 'Párate frente al local y toca el botón.';
