@@ -1,213 +1,564 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Registrar cliente</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1f4e79">
+<meta name="theme-color" content="#f5f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <script src="config.js"></script>
 <script src="api.js"></script>
 <style>
-  :root { --azul:#1f4e79; --verde:#1e8e3e; --gris:#f2f4f7; --borde:#d0d5dd; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:system-ui,-apple-system,Roboto,Arial,sans-serif; background:var(--gris); color:#1d2939; }
-  header { background:var(--azul); color:#fff; padding:16px; }
-  header h1 { margin:0; font-size:20px; }
-  header p { margin:4px 0 0; opacity:.85; font-size:14px; }
-  form { padding:16px; max-width:560px; margin:auto; }
-  .card { background:#fff; border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.06); }
-  .card h2 { font-size:15px; margin:0 0 10px; color:var(--azul); }
-  label { display:block; font-size:14px; font-weight:600; margin:10px 0 4px; }
-  label .req { color:#d92d20; }
-  input, select, textarea { width:100%; font-size:16px; padding:12px; border:1px solid var(--borde); border-radius:8px; background:#fff; }
-  textarea { min-height:70px; }
-  .btn { display:block; width:100%; font-size:17px; font-weight:600; padding:14px; border:0; border-radius:10px; cursor:pointer; }
-  .btn-sec { background:#e8eef6; color:var(--azul); }
-  .btn-pri { background:var(--verde); color:#fff; font-size:18px; }
-  .btn:disabled { opacity:.6; }
-  .foto { margin-top:6px; }
-  .foto img { width:100%; max-height:220px; object-fit:cover; border-radius:8px; margin-top:8px; display:none; }
-  .ok { color:var(--verde); font-weight:600; font-size:14px; margin-top:8px; }
-  .err { color:#d92d20; font-size:14px; margin-top:8px; }
-  .muted { color:#667085; font-size:13px; }
-  #exito { display:none; text-align:center; padding:40px 16px; }
-  #exito .icono { font-size:64px; }
+  /* Una tarjeta por paso, barra de acción fija abajo al alcance del pulgar */
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink: #0f1722;
+    --ink-2: #4a5566;
+    --ink-3: #8a94a3;
+    --line: #e2e6ec;
+    --accent: #1b4dd8;
+    --accent-ink: #ffffff;
+    --accent-soft: #e8eefc;
+    --ok: #12805c;
+    --ok-soft: #e3f4ec;
+    --warn: #a35c00;
+    --warn-soft: #fdf1df;
+    --bad: #c4321f;
+    --bad-soft: #fcebe8;
+    --shadow: 0 1px 2px rgba(15, 23, 34, .04), 0 8px 24px rgba(15, 23, 34, .06);
+    --radius: 18px;
+    --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1116; --surface: #171b22; --surface-2: #20252e; --ink: #eef1f5; --ink-2: #b4bcc8; --ink-3: #7c8696;
+      --line: #2a303a; --accent: #6f95ff; --accent-ink: #0b1020; --accent-soft: #1c2640;
+      --ok: #4cc79a; --ok-soft: #13291f; --warn: #f0b259; --warn-soft: #2d2211; --bad: #ff8a78; --bad-soft: #321a16;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body { font-family: var(--font); background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  [hidden] { display: none !important; }
+  button { font-family: inherit; }
+  svg { flex-shrink: 0; }
+
+  .app { max-width: 560px; margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column;
+         padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 112px); }
+
+  /* Encabezado */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .marca { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .logo { width: 36px; height: 36px; border-radius: 11px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+  .marca b { font-size: 15px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .marca small { display: block; font-size: 12px; color: var(--ink-3); font-weight: 500; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px 0 6px; border-radius: 999px; background: var(--surface);
+          border: 1px solid var(--line); color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer; max-width: 170px; }
+  .chip .ini { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  .chip span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btn-instalar { height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 13px; cursor: pointer; }
+
+  .titulo { margin: 28px 0 6px; }
+  .titulo h1 { font-size: 28px; line-height: 1.15; letter-spacing: -.025em; margin: 0; font-weight: 800; text-wrap: balance; }
+  .titulo p { margin: 6px 0 0; color: var(--ink-2); font-size: 15px; }
+
+  /* Pasos */
+  .pasos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 22px 0 18px; }
+  .paso { display: flex; flex-direction: column; gap: 8px; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: var(--ink-3); }
+  .paso .barra { height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .paso .barra i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 4px; transition: width .45s var(--ease); }
+  .paso.hecho .barra i, .paso.activo .barra i { width: 100%; }
+  .paso.hecho .barra i { background: var(--ok); }
+  .paso span { font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+  .paso.activo span { color: var(--ink); }
+  .paso.hecho span { color: var(--ok); }
+
+  .vista { animation: entra .4s var(--ease); }
+  .vista.atras { animation-name: entraAtras; }
+  @keyframes entra { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+  @keyframes entraAtras { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+
+  .tarjeta { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 6px 18px; }
+  .tarjeta + .tarjeta { margin-top: 14px; }
+  .etiqueta-seccion { font-size: 12px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; margin: 22px 4px 10px; }
+
+  /* Campos con etiqueta flotante */
+  .campo { position: relative; border-bottom: 1px solid var(--line); }
+  .campo:last-child { border-bottom: 0; }
+  .campo input, .campo textarea { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: 500 17px/1.3 var(--font);
+                                   padding: 28px 0 10px; resize: none; }
+  .campo textarea { min-height: 92px; }
+  .campo label { position: absolute; left: 0; top: 19px; font-size: 16px; color: var(--ink-3); pointer-events: none; transition: all .2s var(--ease); font-weight: 500; }
+  .campo input:focus + label, .campo input:not(:placeholder-shown) + label,
+  .campo textarea:focus + label, .campo textarea:not(:placeholder-shown) + label { top: 9px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+  .campo input:focus + label, .campo textarea:focus + label { color: var(--accent); }
+  .campo::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform .3s var(--ease); }
+  .campo:focus-within::after { transform: scaleX(1); }
+  .campo.error::after { background: var(--bad); transform: scaleX(1); }
+  .req { color: var(--accent); }
+  .ayuda-error { color: var(--bad); font-size: 13px; font-weight: 600; margin: 10px 4px 0; }
+
+  /* Fotos */
+  .fotos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .foto { position: relative; aspect-ratio: 3 / 4; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow);
+          overflow: hidden; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+          border: 1.5px dashed var(--line); transition: transform .2s var(--ease), border-color .2s; text-align: center; padding: 12px; }
+  .foto:active { transform: scale(.98); }
+  .foto input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .foto .ico { width: 52px; height: 52px; border-radius: 16px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+  .foto b { font-size: 15px; }
+  .foto small { color: var(--ink-3); font-size: 12px; font-weight: 500; }
+  .foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .foto.lista { border: 0; }
+  .foto .sello { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+                 background: rgba(15, 23, 34, .62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff; border-radius: 12px;
+                 padding: 8px 10px; font-size: 13px; font-weight: 600; pointer-events: none; }
+  .foto .sello i { font-style: normal; opacity: .8; font-weight: 500; }
+  .foto.error-foto { border-color: var(--bad); }
+  .consejo { display: flex; gap: 10px; align-items: flex-start; color: var(--ink-2); font-size: 14px; margin: 16px 4px 0; }
+  .consejo svg { color: var(--accent); margin-top: 2px; }
+
+  /* Ubicación */
+  .ubic { padding: 20px 18px; }
+  .ubic-cab { display: flex; align-items: center; gap: 14px; }
+  .radar { position: relative; width: 52px; height: 52px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+  .radar.buscando::before, .radar.buscando::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent); opacity: 0; animation: onda 1.8s var(--ease) infinite; }
+  .radar.buscando::after { animation-delay: .9s; }
+  .radar.ok { background: var(--ok-soft); color: var(--ok); }
+  @keyframes onda { from { transform: scale(1); opacity: .5; } to { transform: scale(1.8); opacity: 0; } }
+  .ubic-cab b { display: block; font-size: 16px; }
+  .ubic-cab small { color: var(--ink-2); font-size: 14px; }
+  .mapa { margin-top: 16px; height: 190px; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
+  .mapa iframe { width: 100%; height: 100%; border: 0; }
+  .insignia { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+  .insignia.buena { background: var(--ok-soft); color: var(--ok); }
+  .insignia.media { background: var(--warn-soft); color: var(--warn); }
+  .boton-sec { width: 100%; height: 52px; margin-top: 16px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+               font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+  .boton-sec:active { background: var(--surface-2); }
+  .enlace { background: none; border: 0; color: var(--accent); font-weight: 700; font-size: 14px; padding: 12px 4px 0; cursor: pointer; }
+  .aviso { margin-top: 14px; border-radius: 12px; padding: 12px 14px; font-size: 14px; font-weight: 500; }
+  .aviso.malo { background: var(--bad-soft); color: var(--bad); }
+
+  /* Resumen */
+  .resumen { padding: 4px 18px; }
+  .fila-res { display: flex; justify-content: space-between; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .fila-res:last-child { border-bottom: 0; }
+  .fila-res span { color: var(--ink-3); }
+  .fila-res b { text-align: right; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+
+  /* Barra de acción */
+  .accion { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 14px);
+            background: linear-gradient(to top, var(--bg) 70%, transparent); }
+  .accion-in { max-width: 560px; margin: 0 auto; display: flex; gap: 10px; }
+  .btn { height: 58px; border-radius: 16px; border: 0; font-size: 17px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+         transition: transform .15s var(--ease), opacity .2s; }
+  .btn:active { transform: scale(.98); }
+  .btn:focus-visible, .chip:focus-visible, .foto:focus-within, .boton-sec:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .btn-pri { flex: 1; background: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px rgba(27, 77, 216, .25); }
+  .btn-volver { width: 58px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+  .btn:disabled { opacity: .55; }
+
+  /* Hoja inferior (nombre del vendedor) */
+  .velo { position: fixed; inset: 0; background: rgba(10, 14, 20, .45); z-index: 20; display: flex; align-items: flex-end; justify-content: center; animation: aparece .25s ease; }
+  .hoja { width: 100%; max-width: 560px; background: var(--surface); border-radius: 24px 24px 0 0; padding: 10px 20px calc(env(safe-area-inset-bottom, 0px) + 20px); animation: sube .35s var(--ease); }
+  .hoja .asa { width: 40px; height: 5px; border-radius: 5px; background: var(--line); margin: 0 auto 18px; }
+  .hoja h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.02em; }
+  .hoja p { margin: 0 0 12px; color: var(--ink-2); }
+  @keyframes aparece { from { opacity: 0; } }
+  @keyframes sube { from { transform: translateY(40px); opacity: .6; } }
+
+  /* Envío y éxito */
+  .pantalla { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center;
+              padding: 24px; text-align: center; animation: aparece .3s ease; }
+  .pantalla h2 { font-size: 26px; letter-spacing: -.02em; margin: 22px 0 6px; }
+  .pantalla p { color: var(--ink-2); margin: 0; max-width: 320px; }
+  .etapas { margin-top: 26px; display: grid; gap: 12px; text-align: left; }
+  .etapa { display: flex; align-items: center; gap: 12px; color: var(--ink-3); font-weight: 600; font-size: 15px; transition: color .3s; }
+  .etapa .pt { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; transition: all .3s; }
+  .etapa.activa { color: var(--ink); }
+  .etapa.activa .pt { border-color: var(--accent); border-top-color: transparent; animation: gira .8s linear infinite; }
+  .etapa.lista { color: var(--ok); }
+  .etapa.lista .pt { border-color: var(--ok); background: var(--ok); color: #fff; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  .check { width: 96px; height: 96px; border-radius: 50%; background: var(--ok-soft); color: var(--ok); display: grid; place-items: center; animation: pop .5s var(--ease); }
+  .check path { stroke-dasharray: 30; stroke-dashoffset: 30; animation: traza .5s .2s var(--ease) forwards; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } }
+  @keyframes traza { to { stroke-dashoffset: 0; } }
+  .codigo { margin-top: 18px; display: inline-flex; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+            padding: 10px 14px; font-weight: 700; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+  .codigo span { color: var(--ink-3); font-weight: 600; letter-spacing: 0; }
+  .pantalla .btn { flex: none; width: 100%; max-width: 360px; margin-top: 30px; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); transform: translateX(-50%); z-index: 40; background: var(--ink); color: var(--bg);
+           padding: 12px 18px; border-radius: 14px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); max-width: calc(100% - 32px); animation: sube .3s var(--ease); }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .check path { stroke-dashoffset: 0; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Registrar cliente nuevo</h1>
-  <p class="empresa"></p>
-</header>
-
-<form id="f" autocomplete="off" onsubmit="enviar(event)">
-  <div class="card">
-    <h2>Vendedor</h2>
-    <label>¿Quién registra? <span class="req">*</span></label>
-    <input name="vendedor" id="vendedor" required list="listaVendedores" placeholder="Escribe tu nombre">
-    <datalist id="listaVendedores">
-    </datalist>
-  </div>
-
-  <div class="card">
-    <h2>Datos del cliente</h2>
-    <label>Nombre comercial <span class="req">*</span></label>
-    <input name="nombre" required placeholder="Ej: Bodega La Esquina">
-    <label>Persona de contacto</label>
-    <input name="contacto">
-    <label>Teléfono</label>
-    <input name="telefono" type="tel" inputmode="tel" placeholder="0414-1234567">
-    <label>Correo</label>
-    <input name="correo" type="email">
-    <label>Dirección</label>
-    <textarea name="direccion"></textarea>
-    <label>Zona / Ciudad</label>
-    <input name="zona">
-  </div>
-
-  <div class="card">
-    <h2>Fotos</h2>
-    <div class="foto">
-      <label>Foto del RIF <span class="req">*</span></label>
-      <input type="file" accept="image/*" capture="environment" id="fotoRif" onchange="previsualizar(this,'prevRif')">
-      <img id="prevRif">
+<div class="app">
+  <header class="top">
+    <div class="marca">
+      <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M9.5 9.5h5M12 7v5"/></svg></div>
+      <div style="min-width:0"><b class="empresa">Mi Empresa</b><small>Clientes nuevos</small></div>
     </div>
-    <div class="foto">
-      <label>Foto del local <span class="req">*</span></label>
-      <input type="file" accept="image/*" capture="environment" id="fotoLocal" onchange="previsualizar(this,'prevLocal')">
-      <img id="prevLocal">
+    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+      <button class="btn-instalar" id="btnInstalar" hidden>Instalar</button>
+      <button class="chip" id="chipVendedor" type="button" aria-label="Cambiar vendedor"><span class="ini" id="iniVendedor">?</span><span id="nomVendedor">Tu nombre</span></button>
     </div>
+  </header>
+
+  <div class="titulo">
+    <h1 id="tituloPaso">Nuevo cliente</h1>
+    <p id="subPaso">Datos básicos del negocio.</p>
   </div>
 
-  <div class="card">
-    <h2>Ubicación</h2>
-    <p class="muted">Párate en el local y toca el botón. Activa el GPS del teléfono.</p>
-    <button type="button" class="btn btn-sec" id="btnGps" onclick="tomarUbicacion()">📍 Tomar ubicación actual</button>
-    <div id="gpsEstado"></div>
-    <label>o pega el enlace de Google Maps</label>
-    <input name="mapsLink" placeholder="https://maps.app.goo.gl/...">
-  </div>
+  <nav class="pasos" aria-label="Pasos">
+    <button class="paso activo" data-ir="0" type="button"><div class="barra"><i></i></div><span>1 · Cliente</span></button>
+    <button class="paso" data-ir="1" type="button"><div class="barra"><i></i></div><span>2 · Fotos</span></button>
+    <button class="paso" data-ir="2" type="button"><div class="barra"><i></i></div><span>3 · Ubicación</span></button>
+  </nav>
 
-  <div class="card">
-    <h2>Observaciones</h2>
-    <textarea name="notas" placeholder="Horario, tipo de negocio, productos de interés..."></textarea>
-  </div>
+  <form id="f" autocomplete="off" novalidate>
+    <!-- Paso 1 -->
+    <section class="vista" data-paso="0">
+      <div class="tarjeta">
+        <div class="campo"><input id="c-nombre" name="nombre" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-nombre">Nombre del negocio <span class="req">*</span></label></div>
+        <div class="campo"><input id="c-contacto" name="contacto" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-contacto">Persona de contacto</label></div>
+        <div class="campo"><input id="c-telefono" name="telefono" type="tel" inputmode="tel" placeholder=" " enterkeyhint="next"><label for="c-telefono">Teléfono</label></div>
+        <div class="campo"><input id="c-correo" name="correo" type="email" inputmode="email" placeholder=" " enterkeyhint="next"><label for="c-correo">Correo</label></div>
+      </div>
+      <div class="etiqueta-seccion">Dirección</div>
+      <div class="tarjeta">
+        <div class="campo"><input id="c-zona" name="zona" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-zona">Zona o ciudad</label></div>
+        <div class="campo"><textarea id="c-direccion" name="direccion" placeholder=" " rows="2"></textarea><label for="c-direccion">Dirección y punto de referencia</label></div>
+      </div>
+      <div class="ayuda-error" id="err0" hidden></div>
+    </section>
 
-  <button class="btn btn-pri" id="btnEnviar">Enviar registro</button>
-  <div id="error" class="err"></div>
-  <p class="muted" style="text-align:center">Los campos con <span class="req">*</span> son obligatorios.</p>
-</form>
+    <!-- Paso 2 -->
+    <section class="vista" data-paso="1" hidden>
+      <div class="fotos">
+        <label class="foto" id="tileRif">
+          <input type="file" accept="image/*" capture="environment" id="fotoRif">
+          <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 10h6M7 14h4"/><circle cx="16.5" cy="12" r="1.8"/></svg></div>
+          <b>Foto del RIF</b><small>Toca para tomarla</small>
+        </label>
+        <label class="foto" id="tileLocal">
+          <input type="file" accept="image/*" capture="environment" id="fotoLocal">
+          <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 5 4h14l2 5.5"/><path d="M4 9.5V20h16V9.5"/><path d="M3 9.5c0 1.4 1.1 2.5 2.5 2.5S8 10.9 8 9.5c0 1.4 1.1 2.5 2.5 2.5S13 10.9 13 9.5c0 1.4 1.1 2.5 2.5 2.5S18 10.9 18 9.5c0 1.4 1.1 2.5 2.5 2.5"/><path d="M10 20v-5h4v5"/></svg></div>
+          <b>Foto del local</b><small>Fachada con el letrero</small>
+        </label>
+      </div>
+      <div class="consejo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <span>Que el RIF se lea completo y sin reflejos. La oficina copia los datos desde esta foto.</span></div>
+      <div class="ayuda-error" id="err1" hidden></div>
+    </section>
 
-<div id="exito">
-  <div class="icono">✅</div>
-  <h2>¡Cliente registrado!</h2>
-  <p id="exitoDetalle" class="muted"></p>
-  <button class="btn btn-pri" onclick="nuevo()" style="max-width:320px;margin:20px auto 0">Registrar otro cliente</button>
+    <!-- Paso 3 -->
+    <section class="vista" data-paso="2" hidden>
+      <div class="tarjeta ubic">
+        <div class="ubic-cab">
+          <div class="radar" id="radar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
+          <div style="min-width:0"><b id="ubicTitulo">Ubicación del local</b><small id="ubicTexto">Párate frente al local y toca el botón.</small></div>
+        </div>
+        <div class="mapa" id="mapa" hidden></div>
+        <button type="button" class="boton-sec" id="btnGps">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/></svg>
+          <span id="btnGpsTxt">Tomar ubicación</span>
+        </button>
+        <div id="gpsEstado"></div>
+        <button type="button" class="enlace" id="btnManual">¿Sin GPS? Pegar enlace de Maps</button>
+        <div class="campo" id="campoMaps" hidden><input id="c-maps" name="mapsLink" placeholder=" " inputmode="url"><label for="c-maps">Enlace de Google Maps</label></div>
+      </div>
+
+      <div class="etiqueta-seccion">Observaciones</div>
+      <div class="tarjeta">
+        <div class="campo"><textarea id="c-notas" name="notas" placeholder=" " rows="2"></textarea><label for="c-notas">Horario, tipo de negocio, productos de interés…</label></div>
+      </div>
+
+      <div class="etiqueta-seccion">Resumen</div>
+      <div class="tarjeta resumen" id="resumen"></div>
+      <div class="ayuda-error" id="err2" hidden></div>
+    </section>
+    <input type="hidden" name="vendedor" id="vendedor">
+  </form>
 </div>
 
+<div class="accion">
+  <div class="accion-in">
+    <button class="btn btn-volver" id="btnAtras" type="button" aria-label="Volver" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <button class="btn btn-pri" id="btnEnviar" type="button"><span id="btnTxt">Continuar</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- Nombre del vendedor -->
+<div class="velo" id="velo" hidden>
+  <div class="hoja" role="dialog" aria-labelledby="hojaTit">
+    <div class="asa"></div>
+    <h2 id="hojaTit">¿Quién registra?</h2>
+    <p>Se guarda en este teléfono. Solo lo escribes una vez.</p>
+    <div class="campo" style="border-bottom:1px solid var(--line)"><input id="inVendedor" list="listaVendedores" placeholder=" " autocapitalize="words" enterkeyhint="done"><label for="inVendedor">Tu nombre</label></div>
+    <datalist id="listaVendedores"></datalist>
+    <button class="btn btn-pri" id="btnGuardarVendedor" type="button" style="width:100%;margin-top:20px">Listo</button>
+  </div>
+</div>
+
+<!-- Enviando -->
+<div class="pantalla" id="enviando" hidden>
+  <div class="radar buscando" style="width:72px;height:72px"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+  <h2>Enviando registro</h2>
+  <p>No cierres la app, toma unos segundos.</p>
+  <div class="etapas">
+    <div class="etapa" id="et1"><div class="pt"></div>Preparando fotos</div>
+    <div class="etapa" id="et2"><div class="pt"></div>Enviando a la oficina</div>
+    <div class="etapa" id="et3"><div class="pt"></div>Confirmando</div>
+  </div>
+</div>
+
+<!-- Éxito -->
+<div class="pantalla" id="exito" hidden>
+  <div class="check"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+  <h2>¡Cliente registrado!</h2>
+  <p id="exitoDetalle">La oficina ya lo puede ver.</p>
+  <div class="codigo"><span>Código</span><b id="exitoCodigo">—</b></div>
+  <button class="btn btn-pri" id="btnOtro" type="button">Registrar otro cliente</button>
+</div>
+
+<div id="error" hidden></div>
+
 <script>
-  var gps = null;
+  var paso = 0, gps = null, fotos = { fotoRif: null, fotoLocal: null };
+  var f = document.getElementById('f');
+  var TITULOS = [
+    ['Nuevo cliente', 'Datos básicos del negocio.'],
+    ['Fotos', 'Dos fotos claras y listo.'],
+    ['Ubicación', 'Guarda el punto exacto del local.']
+  ];
+  var $ = function (id) { return document.getElementById(id); };
+  function guardar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function leer(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
-  // Recordar el vendedor en este teléfono
-  try {
-    var v = localStorage.getItem('vendedor');
-    if (v) document.getElementById('vendedor').value = v;
-  } catch (e) {}
-
-  function previsualizar(input, idImg) {
-    var img = document.getElementById(idImg);
-    if (input.files && input.files[0]) {
-      img.src = URL.createObjectURL(input.files[0]);
-      img.style.display = 'block';
-    }
+  function toast(msg) {
+    var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 2600);
   }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
-  // Reduce la foto a máx. 1600px y JPEG para que suba rápido con datos móviles
+  /* ---------- Vendedor ---------- */
+  function pintarVendedor() {
+    var v = $('vendedor').value;
+    $('nomVendedor').textContent = v ? v.trim().split(/\s+/)[0] : 'Tu nombre';
+    $('iniVendedor').textContent = v ? v.trim().split(/\s+/).map(function (p) { return p[0]; }).slice(0, 2).join('').toUpperCase() : '?';
+  }
+  function pedirVendedor() { $('velo').hidden = false; $('inVendedor').value = $('vendedor').value; setTimeout(function () { $('inVendedor').focus(); }, 250); }
+  $('chipVendedor').onclick = pedirVendedor;
+  $('btnGuardarVendedor').onclick = function () {
+    var v = $('inVendedor').value.trim();
+    if (!v) { $('inVendedor').parentNode.classList.add('error'); return; }
+    $('vendedor').value = v; guardar('vendedor', v); pintarVendedor(); $('velo').hidden = true;
+  };
+  $('inVendedor').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('btnGuardarVendedor').click(); });
+  $('vendedor').value = leer('vendedor') || '';
+  pintarVendedor();
+  if (!$('vendedor').value) setTimeout(pedirVendedor, 400);
+
+  /* ---------- Borrador: no perder lo escrito si se cierra la app ---------- */
+  var CAMPOS = ['nombre', 'contacto', 'telefono', 'correo', 'zona', 'direccion', 'notas', 'mapsLink'];
+  try { var b = JSON.parse(leer('borrador') || '{}'); CAMPOS.forEach(function (k) { if (b[k]) f.elements[k].value = b[k]; }); } catch (e) {}
+  f.addEventListener('input', function (e) {
+    var b = {}; CAMPOS.forEach(function (k) { b[k] = f.elements[k].value; }); guardar('borrador', JSON.stringify(b));
+    if (e.target.parentNode.classList) e.target.parentNode.classList.remove('error');
+    var err = $('err' + paso); if (err) err.hidden = true;
+  });
+
+  /* ---------- Navegación por pasos ---------- */
+  function ir(n, atras) {
+    paso = n;
+    document.querySelectorAll('.vista').forEach(function (v) {
+      var on = +v.dataset.paso === n; v.hidden = !on;
+      if (on) { v.classList.toggle('atras', !!atras); v.style.animation = 'none'; v.offsetHeight; v.style.animation = ''; }
+    });
+    document.querySelectorAll('.paso').forEach(function (p) {
+      var i = +p.dataset.ir; p.classList.toggle('activo', i === n); p.classList.toggle('hecho', i < n);
+    });
+    $('tituloPaso').textContent = TITULOS[n][0]; $('subPaso').textContent = TITULOS[n][1];
+    $('btnAtras').hidden = n === 0;
+    $('btnTxt').textContent = n === 2 ? 'Enviar registro' : 'Continuar';
+    if (n === 2) pintarResumen();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function errorPaso(n, msg, campo) {
+    var e = $('err' + n); e.textContent = msg; e.hidden = false;
+    if (campo) { campo.parentNode.classList.add('error'); campo.focus(); }
+    if (navigator.vibrate) navigator.vibrate(40);
+    return false;
+  }
+  function validar(n) {
+    $('err' + n).hidden = true;
+    if (n === 0 && !f.elements.nombre.value.trim()) return errorPaso(0, 'Escribe el nombre del negocio.', f.elements.nombre);
+    if (n === 1) {
+      if (!fotos.fotoRif) { $('tileRif').classList.add('error-foto'); return errorPaso(1, 'Falta la foto del RIF.'); }
+      if (!fotos.fotoLocal) { $('tileLocal').classList.add('error-foto'); return errorPaso(1, 'Falta la foto del local.'); }
+    }
+    if (n === 2 && !gps && !f.elements.mapsLink.value.trim()) return errorPaso(2, 'Toma la ubicación o pega el enlace de Google Maps.');
+    return true;
+  }
+  document.querySelectorAll('.paso').forEach(function (p) {
+    p.onclick = function () {
+      var d = +p.dataset.ir;
+      if (d < paso) return ir(d, true);
+      for (var i = paso; i < d; i++) if (!validar(i)) return ir(i);
+      ir(d);
+    };
+  });
+  $('btnAtras').onclick = function () { if (paso > 0) ir(paso - 1, true); };
+  $('btnEnviar').onclick = function () {
+    if (!validar(paso)) return;
+    if (paso < 2) ir(paso + 1); else enviar();
+  };
+
+  /* ---------- Fotos ---------- */
   function comprimir(file) {
     return new Promise(function (resolve, reject) {
-      if (!file) return resolve('');
       var img = new Image();
       img.onload = function () {
         var max = 1600, w = img.width, h = img.height;
         if (w > max || h > max) { var k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
         var c = document.createElement('canvas'); c.width = w; c.height = h;
         c.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(c.toDataURL('image/jpeg', 0.75));
+        URL.revokeObjectURL(img.src);
+        resolve(c.toDataURL('image/jpeg', 0.78));
       };
       img.onerror = function () { reject(new Error('No se pudo leer la foto')); };
       img.src = URL.createObjectURL(file);
     });
   }
+  [['fotoRif', 'tileRif', 'RIF'], ['fotoLocal', 'tileLocal', 'Local']].forEach(function (p) {
+    $(p[0]).addEventListener('change', function () {
+      var file = this.files && this.files[0]; if (!file) return;
+      var tile = $(p[1]);
+      tile.classList.remove('error-foto'); $('err1').hidden = true;
+      comprimir(file).then(function (data) {
+        fotos[p[0]] = data;
+        tile.classList.add('lista');
+        tile.querySelectorAll('img,.sello').forEach(function (n) { n.remove(); });
+        var img = document.createElement('img'); img.src = data; img.alt = 'Foto ' + p[2]; tile.appendChild(img);
+        var s = document.createElement('div'); s.className = 'sello';
+        s.innerHTML = '<span>✓ ' + p[2] + '</span><i>Cambiar</i>'; tile.appendChild(s);
+      }).catch(function (e) { toast(e.message); });
+    });
+  });
 
-  function mostrarGps(est) {
-    est.innerHTML = '<div class="ok">✔ Ubicación tomada (precisión ~' + gps.precision + ' m) · <a target="_blank" href="https://www.google.com/maps?q=' + gps.lat + ',' + gps.lng + '">ver en mapa</a></div>';
+  /* ---------- Ubicación ---------- */
+  function mostrarGps() {
+    var buena = gps.precision <= 30;
+    $('radar').className = 'radar ok';
+    $('ubicTitulo').textContent = 'Ubicación guardada';
+    $('ubicTexto').innerHTML = '<span class="insignia ' + (buena ? 'buena' : 'media') + '">' + (buena ? 'Precisa' : 'Aproximada') + ' · ±' + gps.precision + ' m</span>';
+    $('btnGpsTxt').textContent = 'Volver a tomar';
+    $('mapa').hidden = false;
+    $('mapa').innerHTML = '<iframe loading="lazy" title="Mapa" src="https://maps.google.com/maps?q=' + gps.lat + ',' + gps.lng + '&z=17&output=embed"></iframe>';
+    $('gpsEstado').innerHTML = ''; $('err2').hidden = true;
+    pintarResumen();
   }
-
   function tomarUbicacion() {
-    var est = document.getElementById('gpsEstado');
-    if (!navigator.geolocation) { est.innerHTML = '<div class="err">Este teléfono no permite GPS aquí. Pega el enlace de Google Maps.</div>'; return; }
-    est.innerHTML = '<div class="muted">Buscando ubicación... si el teléfono pregunta, toca <b>Permitir</b>.</div>';
+    var est = $('gpsEstado');
+    if (!navigator.geolocation) { est.innerHTML = '<div class="aviso malo">Este teléfono no permite GPS. Pega el enlace de Google Maps.</div>'; return; }
+    $('radar').className = 'radar buscando';
+    $('ubicTitulo').textContent = 'Buscando tu ubicación…';
+    $('ubicTexto').textContent = 'Si el teléfono pregunta, toca Permitir.';
+    $('btnGps').disabled = true;
     navigator.geolocation.getCurrentPosition(function (p) {
+      $('btnGps').disabled = false;
       gps = { lat: p.coords.latitude.toFixed(6), lng: p.coords.longitude.toFixed(6), precision: Math.round(p.coords.accuracy) };
-      mostrarGps(est);
+      if (navigator.vibrate) navigator.vibrate(20);
+      mostrarGps();
     }, function (e) {
-      est.innerHTML = '<div class="err">' + (e.code === 1
-        ? 'El permiso de ubicación está bloqueado. Toca el candado 🔒 junto a la dirección → Permisos → Ubicación → Permitir, y vuelve a tocar el botón.'
-        : 'No se pudo obtener la ubicación. Revisa que el GPS del teléfono esté encendido y vuelve a intentar.') +
-        ' También puedes pegar el enlace de Google Maps.</div>';
+      $('btnGps').disabled = false;
+      $('radar').className = 'radar';
+      $('ubicTitulo').textContent = 'No se pudo tomar la ubicación';
+      $('ubicTexto').textContent = 'Revisa el permiso y vuelve a intentar.';
+      est.innerHTML = '<div class="aviso malo">' + (e.code === 1
+        ? 'El permiso de ubicación está bloqueado. Toca el candado 🔒 junto a la dirección → Permisos → Ubicación → Permitir.'
+        : 'Revisa que el GPS del teléfono esté encendido.') + '</div>';
     }, { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
   }
+  $('btnGps').onclick = tomarUbicacion;
+  $('btnManual').onclick = function () { $('campoMaps').hidden = false; $('btnManual').hidden = true; $('c-maps').focus(); };
+  if (f.elements.mapsLink.value) $('btnManual').click();
 
-  async function enviar(ev) {
-    ev.preventDefault();
-    var f = document.getElementById('f'), err = document.getElementById('error'), btn = document.getElementById('btnEnviar');
-    err.textContent = '';
-    var fr = document.getElementById('fotoRif').files[0], fl = document.getElementById('fotoLocal').files[0];
-    if (!fr || !fl) { err.textContent = 'Falta la foto del RIF o del local.'; return; }
-    if (!gps && !f.mapsLink.value.trim()) { err.textContent = 'Falta la ubicación: toca "Tomar ubicación" o pega el enlace de Google Maps.'; return; }
-
-    btn.disabled = true; btn.textContent = 'Enviando... no cierres la app';
-    try {
-      var d = {};
-      new FormData(f).forEach(function (val, k) { d[k] = typeof val === 'string' ? val.trim() : val; });
-      if (gps) { d.lat = gps.lat; d.lng = gps.lng; d.precision = gps.precision; }
-      d.fotoRif = await comprimir(fr);
-      d.fotoLocal = await comprimir(fl);
-      try { localStorage.setItem('vendedor', d.vendedor); } catch (e) {}
-
-      google.script.run
-        .withSuccessHandler(function (r) {
-          document.getElementById('f').style.display = 'none';
-          document.getElementById('exito').style.display = 'block';
-          document.getElementById('exitoDetalle').textContent = 'Código: ' + r.id +
-            (r.duplicado ? ' · Aviso: este teléfono ya estaba registrado, la oficina lo revisará.' : '');
-          window.scrollTo(0, 0);
-        })
-        .withFailureHandler(function (e) {
-          err.textContent = 'No se pudo enviar: ' + e.message + '. Revisa tu conexión e inténtalo de nuevo (no se perdió lo que llenaste).';
-          btn.disabled = false; btn.textContent = 'Enviar registro';
-        })
-        .registrarCliente(d);
-    } catch (e) {
-      err.textContent = e.message;
-      btn.disabled = false; btn.textContent = 'Enviar registro';
-    }
+  function pintarResumen() {
+    var v = function (k) { return esc(f.elements[k].value.trim()) || '—'; };
+    var filas = [
+      ['Negocio', v('nombre')], ['Contacto', v('contacto')], ['Teléfono', v('telefono')], ['Zona', v('zona')],
+      ['Fotos', (fotos.fotoRif ? 1 : 0) + (fotos.fotoLocal ? 1 : 0) + ' de 2'],
+      ['Ubicación', gps ? '±' + gps.precision + ' m' : (f.elements.mapsLink.value.trim() ? 'Enlace de Maps' : 'Pendiente')]
+    ];
+    $('resumen').innerHTML = filas.map(function (r) { return '<div class="fila-res"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join('');
   }
 
-  function nuevo() {
-    var v = document.getElementById('vendedor').value;
-    var f = document.getElementById('f');
-    f.reset(); document.getElementById('vendedor').value = v;
-    ['prevRif', 'prevLocal'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
-    document.getElementById('gpsEstado').innerHTML = '';
-    gps = null;
-    var btn = document.getElementById('btnEnviar'); btn.disabled = false; btn.textContent = 'Enviar registro';
-    f.style.display = 'block'; document.getElementById('exito').style.display = 'none';
-    window.scrollTo(0, 0);
+  /* ---------- Envío ---------- */
+  function etapa(n) { for (var i = 1; i <= 3; i++) { var e = $('et' + i); e.className = 'etapa' + (i < n ? ' lista' : i === n ? ' activa' : ''); } }
+  function enviar() {
+    if (!$('vendedor').value) { pedirVendedor(); return; }
+    var d = { vendedor: $('vendedor').value };
+    CAMPOS.forEach(function (k) { d[k] = f.elements[k].value.trim(); });
+    if (gps) { d.lat = gps.lat; d.lng = gps.lng; d.precision = gps.precision; }
+    d.fotoRif = fotos.fotoRif; d.fotoLocal = fotos.fotoLocal;
+    $('enviando').hidden = false; etapa(1);
+    setTimeout(function () { etapa(2); }, 500);
+    var t3 = setTimeout(function () { etapa(3); }, 2500);
+    google.script.run
+      .withSuccessHandler(function (r) {
+        clearTimeout(t3); etapa(4);
+        setTimeout(function () {
+          $('enviando').hidden = true; $('exito').hidden = false;
+          $('exitoCodigo').textContent = r.id;
+          $('exitoDetalle').textContent = r.duplicado ? 'Ojo: este teléfono ya estaba registrado. La oficina lo revisará.' : 'La oficina ya lo puede ver.';
+          if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
+          try { localStorage.removeItem('borrador'); } catch (e) {}
+        }, 350);
+      })
+      .withFailureHandler(function (e) {
+        clearTimeout(t3);
+        $('enviando').hidden = true;
+        errorPaso(2, 'No se pudo enviar: ' + e.message + '. Revisa la señal y toca Enviar otra vez. No se perdió nada.');
+      })
+      .registrarCliente(d);
   }
+
+  $('btnOtro').onclick = function () {
+    var v = $('vendedor').value; f.reset(); $('vendedor').value = v; try { localStorage.removeItem('borrador'); } catch (e) {}
+    gps = null; fotos = { fotoRif: null, fotoLocal: null };
+    ['tileRif', 'tileLocal'].forEach(function (id) { var t = $(id); t.classList.remove('lista'); t.querySelectorAll('img,.sello').forEach(function (n) { n.remove(); }); });
+    $('radar').className = 'radar'; $('ubicTitulo').textContent = 'Ubicación del local'; $('ubicTexto').textContent = 'Párate frente al local y toca el botón.';
+    $('btnGpsTxt').textContent = 'Tomar ubicación'; $('mapa').hidden = true; $('mapa').innerHTML = ''; $('gpsEstado').innerHTML = '';
+    $('campoMaps').hidden = true; $('btnManual').hidden = false;
+    $('exito').hidden = true; ir(0, true);
+  };
+
+  /* ---------- Instalar como app ---------- */
+  var instalar = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); instalar = e; $('btnInstalar').hidden = false; });
+  $('btnInstalar').onclick = function () { if (instalar) { instalar.prompt(); instalar = null; $('btnInstalar').hidden = true; } };
 </script>
 </body>
 </html>
