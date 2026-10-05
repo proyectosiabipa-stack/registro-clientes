@@ -110,7 +110,7 @@ function registrarCliente(d) {
       'ID': id, 'Fecha': new Date(), 'Vendedor': d.vendedor, 'Nombre comercial': d.nombre,
       'Razón social': '', 'RIF': '', 'Persona de contacto': d.contacto || '',
       'Teléfono': d.telefono ? "'" + d.telefono : '', // apóstrofo: que la hoja no quite el 0 inicial 'Correo': d.correo || '', 'Dirección': d.direccion || '',
-      'Zona / Ciudad': d.zona || '', 'Latitud': d.lat || '', 'Longitud': d.lng || '',
+      'Zona / Ciudad': d.zona || '', 'Latitud': d.lat ? Number(d.lat) : '', 'Longitud': d.lng ? Number(d.lng) : '', // números: la hoja en español leía 10.49 como 1049
       'Precisión GPS (m)': d.precision || '', 'Google Maps': maps,
       'Foto RIF': fotoRif, 'Foto local': fotoLocal, 'Observaciones': d.notas || '',
       'Estado': 'Pendiente', 'Nota oficina': duplicado ? 'OJO: este teléfono ya estaba registrado' : ''
@@ -181,9 +181,9 @@ function cambiarEstado(clave, fila, estado, nota) {
 /** Devuelve la foto en base64 para verla en el portal sin hacer pública la carpeta. */
 function verFoto(clave, url) {
   validarClave_(clave);
-  const m = String(url).match(/[-\w]{25,}/);
-  if (!m) return '';
-  const blob = DriveApp.getFileById(m[0]).getBlob();
+  const m = String(url).match(/\/d\/([-\w]{20,})/) || String(url).match(/[-\w]{25,}/);
+  if (!m) throw new Error('Enlace de foto no válido');
+  const blob = DriveApp.getFileById(m[1] || m[0]).getBlob();
   return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
 }
 

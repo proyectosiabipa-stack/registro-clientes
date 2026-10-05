@@ -40,7 +40,15 @@
   #modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); padding:20px; overflow:auto; z-index:10; }
   #modal .caja { background:#fff; max-width:900px; margin:auto; border-radius:12px; padding:20px; }
   .fotos { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin:12px 0; }
-  .fotos img { width:100%; border-radius:8px; background:#eee; min-height:120px; }
+  .foto-caja { display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .foto-marco { aspect-ratio:4/3; width:100%; background:#f2f4f7; border:1px solid var(--borde); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#667085; font-size:14px; text-align:center; padding:8px; }
+  .foto-marco img { width:100%; height:100%; object-fit:contain; cursor:zoom-in; display:block; }
+  .foto-pie { display:flex; justify-content:space-between; font-size:13px; }
+  .girando { width:28px; height:28px; border:3px solid #d0d5dd; border-top-color:var(--azul); border-radius:50%; animation:gira 0.8s linear infinite; margin:0 auto 8px; }
+  @keyframes gira { to { transform:rotate(360deg); } }
+  .muted { color:#667085; }
+  #visor { display:none; position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:20; align-items:center; justify-content:center; padding:12px; cursor:zoom-out; }
+  #visor img { max-width:100%; max-height:100%; object-fit:contain; }
   .detalle { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:6px 16px; font-size:14px; }
   .detalle div span { color:#667085; display:block; font-size:12px; }
   iframe.mapa { width:100%; height:260px; border:0; border-radius:8px; }
@@ -79,6 +87,7 @@
   </div>
 </main>
 
+<div id="visor" onclick="this.style.display='none'"><img id="visorImg" alt="Foto ampliada"></div>
 <div id="modal" onclick="if(event.target===this)cerrar()"><div class="caja" id="modalCaja"></div></div>
 
 <script>
@@ -185,11 +194,18 @@
   function ver(fila) {
     var x = DATOS.filter(function (r) { return r.fila === fila; })[0];
     var campos = ['ID', 'Fecha', 'Vendedor', 'RIF', 'Razón social', 'Persona de contacto', 'Teléfono', 'Correo', 'Dirección', 'Zona / Ciudad', 'Precisión GPS (m)', 'Observaciones'];
-    var mapa = (x['Latitud'] && x['Longitud'])
-      ? '<iframe class="mapa" src="https://maps.google.com/maps?q=' + encodeURIComponent(x['Latitud'] + ',' + x['Longitud']) + '&z=17&output=embed"></iframe>' : '';
+    // Coordenadas tomadas del enlace de Google Maps (más confiable que las columnas)
+    var mm = String(x['Google Maps'] || '').match(/q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    var mapa = mm
+      ? '<iframe class="mapa" loading="lazy" src="https://maps.google.com/maps?q=' + mm[1] + ',' + mm[2] + '&z=17&output=embed"></iframe>' : '';
+    function cajaFoto(id, titulo, url) {
+      return '<div class="foto-caja"><b>' + titulo + '</b><div class="foto-marco" id="' + id + '">' +
+        (url ? '<div><div class="girando"></div>Cargando foto...</div>' : 'Sin foto') + '</div>' +
+        (url ? '<div class="foto-pie"><span class="muted">Toca la foto para ampliarla</span><a target="_blank" href="' + esc(url) + '">Abrir en Drive</a></div>' : '') + '</div>';
+    }
     document.getElementById('modalCaja').innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">' + esc(x['Nombre comercial']) + '</h2><button onclick="cerrar()">✕</button></div>' +
-      '<div class="fotos"><div><b>Foto RIF</b><img id="imgRif" alt="Cargando..."></div><div><b>Foto local</b><img id="imgLocal" alt="Cargando..."></div></div>' +
+      '<div class="fotos">' + cajaFoto('imgRif', 'Foto RIF', x['Foto RIF']) + cajaFoto('imgLocal', 'Foto local', x['Foto local']) + '</div>' +
       '<div class="detalle">' + campos.map(function (k) { return '<div><span>' + k + '</span>' + esc(x[k] || '—') + '</div>'; }).join('') + '</div>' +
       '<h3>Ubicación</h3>' + (x['Google Maps'] ? '<a target="_blank" href="' + esc(x['Google Maps']) + '">Abrir en Google Maps</a>' : 'Sin ubicación') + mapa +
       '<h3>Revisión de oficina</h3>' +
@@ -199,9 +215,28 @@
       '</div>';
     document.getElementById('modal').style.display = 'block';
     [['imgRif', 'Foto RIF'], ['imgLocal', 'Foto local']].forEach(function (p) {
-      if (!x[p[1]]) { document.getElementById(p[0]).alt = 'Sin foto'; return; }
-      google.script.run.withSuccessHandler(function (src) { var i = document.getElementById(p[0]); if (i) i.src = src; }).verFoto(CLAVE, x[p[1]]);
+      if (x[p[1]]) cargarFoto(p[0], x[p[1]]);
     });
+  }
+
+  var FOTOS = {}; // fotos ya descargadas, para no volver a pedirlas
+  function cargarFoto(id, url) {
+    function poner(src) {
+      var marco = document.getElementById(id); if (!marco) return;
+      marco.innerHTML = '';
+      var img = document.createElement('img'); img.src = src; img.alt = 'Foto';
+      img.onclick = function () { document.getElementById('visorImg').src = src; document.getElementById('visor').style.display = 'flex'; };
+      marco.appendChild(img);
+    }
+    if (FOTOS[url]) return poner(FOTOS[url]);
+    google.script.run
+      .withSuccessHandler(function (src) { FOTOS[url] = src; poner(src); })
+      .withFailureHandler(function (e) {
+        var marco = document.getElementById(id); if (!marco) return;
+        marco.innerHTML = '<div>No se pudo cargar la foto (' + esc(e.message) + ').<br><a href="#" id="re' + id + '">Reintentar</a> o usa "Abrir en Drive".</div>';
+        document.getElementById('re' + id).onclick = function (ev) { ev.preventDefault(); marco.innerHTML = '<div><div class="girando"></div>Cargando foto...</div>'; cargarFoto(id, url); };
+      })
+      .verFoto(CLAVE, url);
   }
 
   function estado(fila, e) {
