@@ -348,6 +348,7 @@
           <span id="btnGpsTxt">Tomar ubicación</span>
         </button>
         <div id="gpsEstado"></div>
+        <button type="button" class="enlace" id="btnSinUbic" hidden>No aparece la ubicación: seguir sin ella</button>
         <button type="button" class="enlace" id="btnManual">¿Sin GPS? Pegar enlace de Maps</button>
         <div class="campo" id="campoMaps" hidden><input id="c-maps" name="mapsLink" placeholder=" " inputmode="url"><label for="c-maps">Enlace de Google Maps</label></div>
       </div>
@@ -547,6 +548,7 @@
     $('btnAtras').hidden = n === 0;
     $('btnTxt').textContent = n === 2 ? 'Enviar registro' : 'Continuar';
     if (n === 2) pintarResumen();
+    if (n >= 1 && !gps) buscarGps(n === 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function errorPaso(n, msg, campo) {
@@ -574,7 +576,7 @@
       if (!fotos.fotoRif) { $('tileRif').classList.add('error-foto'); return errorPaso(1, 'Falta la foto del RIF.'); }
       if (!fotos.fotoLocal) { $('tileLocal').classList.add('error-foto'); return errorPaso(1, 'Falta la foto del local.'); }
     }
-    if (n === 2 && !gps && !f.elements.mapsLink.value.trim()) return errorPaso(2, 'Toma la ubicación o pega el enlace de Google Maps.');
+    if (n === 2 && !gps && !f.elements.mapsLink.value.trim() && !sinUbic) { mostrarSinUbic(); return errorPaso(2, 'Toma la ubicación. Si no aparece, toca "seguir sin ella".'); }
     return true;
   }
   document.querySelectorAll('.paso').forEach(function (p) {
@@ -639,39 +641,66 @@
     $('gpsEstado').innerHTML = ''; $('err2').hidden = true;
     pintarResumen();
   }
-  function tomarUbicacion() {
+  // El GPS empieza a buscar en silencio desde el paso de fotos, así al llegar a Ubicación ya suele estar listo.
+  // Sin internet el GPS funciona igual (usa satélites), pero tarda más. Si no aparece, se puede seguir sin ubicación.
+  var buscandoGps = false, genGps = 0, sinUbic = false, relojSinUbic = null;
+  function buscarGps(silencioso) {
     var est = $('gpsEstado');
-    if (!navigator.geolocation) { est.innerHTML = '<div class="aviso malo">Este teléfono no permite GPS. Pega el enlace de Google Maps.</div>'; return; }
-    $('radar').className = 'radar buscando';
-    $('ubicTitulo').textContent = 'Buscando tu ubicación…';
-    // Sin internet el GPS funciona igual (usa satélites), pero tarda más en encontrar la señal
-    var sinRed = !navigator.onLine;
-    $('ubicTexto').textContent = sinRed
-      ? 'Sin internet el GPS tarda más (hasta 2 minutos). Sal a la puerta o a cielo abierto.'
-      : 'Si el teléfono pregunta, toca Permitir.';
-    $('btnGps').disabled = true;
+    if (!navigator.geolocation) { if (!silencioso) { est.innerHTML = '<div class="aviso malo">Este teléfono no permite GPS.</div>'; mostrarSinUbic(); } return; }
+    if (!silencioso || buscandoGps) pintarBuscando();
+    if (buscandoGps) return;
+    buscandoGps = true;
+    var gen = genGps, sinRed = !navigator.onLine;
+    clearTimeout(relojSinUbic); relojSinUbic = setTimeout(function () { if (gen === genGps && !gps) mostrarSinUbic(); }, 20000);
     function listo(p) {
+      if (gen !== genGps) return;
+      buscandoGps = false; clearTimeout(relojSinUbic);
       $('btnGps').disabled = false;
       gps = { lat: p.coords.latitude.toFixed(6), lng: p.coords.longitude.toFixed(6), precision: Math.round(p.coords.accuracy) };
-      if (navigator.vibrate) navigator.vibrate(20);
+      sinUbic = false; $('btnSinUbic').hidden = true;
+      if (navigator.vibrate && paso === 2) navigator.vibrate(20);
       mostrarGps();
     }
     function fallo(e) {
+      if (gen !== genGps) return;
+      buscandoGps = false; clearTimeout(relojSinUbic);
       $('btnGps').disabled = false;
+      if (gps) return;
       $('radar').className = 'radar';
       $('ubicTitulo').textContent = 'No se pudo tomar la ubicación';
-      $('ubicTexto').textContent = 'Revisa el permiso y vuelve a intentar.';
+      $('ubicTexto').textContent = 'Toca el botón para intentar de nuevo, o sigue sin ubicación.';
       est.innerHTML = '<div class="aviso malo">' + (e.code === 1
         ? 'El permiso de ubicación está bloqueado. Toca el candado 🔒 junto a la dirección → Permisos → Ubicación → Permitir.'
-        : 'Revisa que la ubicación del teléfono esté encendida, sal a cielo abierto y toca de nuevo el botón.') + '</div>';
+        : 'No hubo señal de GPS. Revisa que la ubicación del teléfono esté encendida y sal a cielo abierto.') + '</div>';
+      mostrarSinUbic();
     }
     navigator.geolocation.getCurrentPosition(listo, function (e) {
       if (e.code === 1) return fallo(e);
       // Si el GPS preciso no respondió, se acepta una ubicación aproximada o reciente del teléfono
-      $('ubicTexto').textContent = 'Probando con una ubicación aproximada…';
+      if (gen === genGps && !gps) $('ubicTexto').textContent = 'Probando con una ubicación aproximada…';
       navigator.geolocation.getCurrentPosition(listo, fallo, { enableHighAccuracy: false, timeout: 30000, maximumAge: 600000 });
-    }, { enableHighAccuracy: true, timeout: sinRed ? 120000 : 30000, maximumAge: 0 });
+    }, { enableHighAccuracy: true, timeout: sinRed ? 90000 : 30000, maximumAge: 0 });
   }
+  function pintarBuscando() {
+    if (gps) return;
+    $('radar').className = 'radar buscando';
+    $('ubicTitulo').textContent = 'Buscando tu ubicación…';
+    $('ubicTexto').textContent = !navigator.onLine
+      ? 'Sin internet el GPS tarda más. Sal a la puerta o a cielo abierto.'
+      : 'Si el teléfono pregunta, toca Permitir.';
+    $('gpsEstado').innerHTML = '';
+    $('btnGps').disabled = true;
+  }
+  function mostrarSinUbic() { if (!gps && !sinUbic) $('btnSinUbic').hidden = false; }
+  function tomarUbicacion() { if (!buscandoGps) gps = null; buscarGps(false); }
+  $('btnSinUbic').onclick = function () {
+    sinUbic = true; this.hidden = true;
+    $('radar').className = 'radar';
+    $('ubicTitulo').textContent = 'Se enviará sin ubicación';
+    $('ubicTexto').textContent = 'Si el GPS la encuentra antes de enviar, se agrega sola.';
+    $('gpsEstado').innerHTML = ''; $('err2').hidden = true;
+    pintarResumen();
+  };
   $('btnGps').onclick = tomarUbicacion;
   $('btnManual').onclick = function () { $('campoMaps').hidden = false; $('btnManual').hidden = true; $('c-maps').focus(); };
   if (f.elements.mapsLink.value) $('btnManual').click();
@@ -681,7 +710,7 @@
     var filas = [
       ['Negocio', v('nombre')], ['Tipo', v('tipoCliente')], ['Interés', v('interes')], ['Contacto', v('contacto')], ['Teléfono', v('telefono')], ['Zona', v('zona')],
       ['Fotos', (fotos.fotoRif ? 1 : 0) + (fotos.fotoLocal ? 1 : 0) + ' de 2'],
-      ['Ubicación', gps ? '±' + gps.precision + ' m' : (f.elements.mapsLink.value.trim() ? 'Enlace de Maps' : 'Pendiente')]
+      ['Ubicación', gps ? '±' + gps.precision + ' m' : (f.elements.mapsLink.value.trim() ? 'Enlace de Maps' : sinUbic ? 'Sin ubicación' : 'Pendiente')]
     ];
     $('resumen').innerHTML = filas.map(function (r) { return '<div class="fila-res"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join('');
   }
@@ -694,6 +723,7 @@
     var d = { vendedor: $('vendedor').value, idLocal: Cola.nuevoId(), linea: LINEA };
     CAMPOS.forEach(function (k) { d[k] = f.elements[k].value.trim(); });
     if (gps) { d.lat = gps.lat; d.lng = gps.lng; d.precision = gps.precision; }
+    else if (!d.mapsLink) d.notas = ['Sin ubicación (no hubo señal de GPS)', d.notas].filter(Boolean).join(' · ');
     d.fotoRif = fotos.fotoRif; d.fotoLocal = fotos.fotoLocal;
     // Si el motor todavía no tiene las columnas nuevas, se guardan dentro de Observaciones
     if (VERSION_MOTOR < 2 && (d.tipoCliente || d.interes)) {
@@ -784,6 +814,7 @@
   $('btnOtro').onclick = function () {
     var v = $('vendedor').value; f.reset(); $('vendedor').value = v; $('c-tipo').value = ''; $('c-tipoOtro').value = ''; pintarTipos(); try { localStorage.removeItem('borrador'); } catch (e) {}
     gps = null; fotos = { fotoRif: null, fotoLocal: null };
+    genGps++; buscandoGps = false; sinUbic = false; clearTimeout(relojSinUbic); $('btnSinUbic').hidden = true; $('btnGps').disabled = false;
     ['tileRif', 'tileLocal'].forEach(function (id) { var t = $(id); t.classList.remove('lista'); t.querySelectorAll('img,.sello').forEach(function (n) { n.remove(); }); });
     $('radar').className = 'radar'; $('ubicTitulo').textContent = 'Ubicación del local'; $('ubicTexto').textContent = 'Párate frente al local y toca el botón.';
     $('btnGpsTxt').textContent = 'Tomar ubicación'; $('mapa').hidden = true; $('mapa').innerHTML = ''; $('gpsEstado').innerHTML = '';
