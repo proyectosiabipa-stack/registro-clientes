@@ -46,7 +46,7 @@ function instalar() {
     hoja.setName(CONFIG.NOMBRE_HOJA);
   }
   hoja.getRange(1, 1, 1, COLUMNAS.length).setValues([COLUMNAS])
-      .setFontWeight('bold').setBackground('#1f4e79').setFontColor('#ffffff');
+      .setFontWeight('bold').setBackground('#286a4d').setFontColor('#ffffff');
   hoja.setFrozenRows(1);
   const reglaEstado = SpreadsheetApp.newDataValidation().requireValueInList(ESTADOS, true).build();
   hoja.getRange(2, COLUMNAS.indexOf('Estado') + 1, hoja.getMaxRows() - 1, 1).setDataValidation(reglaEstado);
@@ -65,7 +65,7 @@ function doGet(e) {
   const url = CONFIG.URL_PORTAL + (oficina ? 'oficina.html' : '');
   return HtmlService.createHtmlOutput(
     '<div style="font:18px sans-serif;text-align:center;margin-top:60px">La app se mudó.<br><br>' +
-    '<a target="_top" href="' + url + '" style="background:#1f4e79;color:#fff;padding:14px 22px;border-radius:10px;text-decoration:none">Abrir ' +
+    '<a target="_top" href="' + url + '" style="background:#286a4d;color:#fff;padding:14px 22px;border-radius:10px;text-decoration:none">Abrir ' +
     (oficina ? 'portal de oficina' : 'formulario') + '</a></div>')
     .setTitle('Registro de clientes')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -394,7 +394,7 @@ function getHoja_() {
   // Si se agregaron columnas nuevas al código, les pone su título en la hoja
   if (hoja.getLastColumn() < COLUMNAS.length) {
     hoja.getRange(1, 1, 1, COLUMNAS.length).setValues([COLUMNAS])
-        .setFontWeight('bold').setBackground('#1f4e79').setFontColor('#ffffff');
+        .setFontWeight('bold').setBackground('#286a4d').setFontColor('#ffffff');
   }
   return hoja;
 }

@@ -19,8 +19,8 @@
   /* Lista a la izquierda, ficha del cliente en un panel que se desliza desde la derecha */
   :root {
     --bg: #f5f6f8; --surface: #ffffff; --surface-2: #eef1f5; --ink: #0f1722; --ink-2: #4a5566; --ink-3: #8a94a3; --line: #e2e6ec;
-    --accent: #1b4dd8; --accent-ink: #ffffff; --accent-soft: #e8eefc;
-    --ok: #12805c; --ok-soft: #e3f4ec; --warn: #a35c00; --warn-soft: #fdf1df; --bad: #c4321f; --bad-soft: #fcebe8;
+    --accent: #286a4d; --accent-ink: #ffffff; --marca-2: #95cf5f; --accent-soft: #e7f1eb;
+    --ok: #3a7f24; --ok-soft: #eaf5df; --warn: #a35c00; --warn-soft: #fdf1df; --bad: #c4321f; --bad-soft: #fcebe8;
     --shadow: 0 1px 2px rgba(15, 23, 34, .04), 0 8px 24px rgba(15, 23, 34, .06);
     --shadow-lg: 0 24px 64px rgba(15, 23, 34, .18);
     --radius: 18px;
@@ -43,7 +43,7 @@
   .btn:hover { background: var(--surface-2); }
   .btn:active { transform: scale(.98); }
   .btn:disabled { opacity: .55; cursor: default; }
-  .btn-pri { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px rgba(27, 77, 216, .22); }
+  .btn-pri { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px rgba(40, 106, 77, .22); }
   .btn-pri:hover { background: #1743bd; }
   .btn-icono { width: 44px; padding: 0; }
   .btn:focus-visible, .fila:focus-visible, .kpi:focus-visible, .seg button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -51,12 +51,16 @@
   @keyframes gira { to { transform: rotate(360deg); } }
 
   /* Logo */
-  .logo { width: 38px; height: 38px; border-radius: 12px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+  .logo { height: 36px; width: auto; display: block; flex-shrink: 0; }
+  .marca .sep { width: 1px; height: 28px; background: var(--line); flex-shrink: 0; }
+  /* Franja con los dos verdes de la marca */
+  .franja { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 50; background: linear-gradient(90deg, #286a4d 0 62%, #95cf5f 62% 100%); }
 
   /* Entrada */
   .entrada { min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; }
   .entrada-caja { width: 100%; max-width: 400px; background: var(--surface); border-radius: 24px; box-shadow: var(--shadow); padding: 32px 28px; animation: sube .5s var(--ease); }
-  .entrada-caja .logo { width: 52px; height: 52px; border-radius: 16px; margin-bottom: 22px; }
+  .entrada-caja .logo-grande { display: block; width: 190px; height: auto; margin: 0 auto 26px; }
+  .entrada-caja h1, .entrada-caja > p { text-align: center; }
   .entrada-caja h1 { font-size: 26px; letter-spacing: -.025em; margin: 0; }
   .entrada-caja p { color: var(--ink-2); margin: 6px 0 22px; }
   .entrada-caja .btn { width: 100%; height: 54px; font-size: 16px; margin-top: 18px; border-radius: 14px; }
@@ -227,11 +231,12 @@
 </style>
 </head>
 <body>
+<div class="franja" aria-hidden="true"></div>
 
 <!-- Entrada -->
 <div class="entrada" id="login">
   <div class="entrada-caja">
-    <div class="logo"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M9.5 9.5h5M12 7v5"/></svg></div>
+    <img class="logo-grande" src="logo-bipa-completo.png" alt="BIPA · Buenas ideas puestas en acción" width="190" height="116">
     <h1>Panel de oficina</h1>
     <p><span class="empresa">Productos BIPA</span> · Clientes nuevos</p>
     <div class="campo"><input type="password" id="clave" placeholder=" " autocomplete="current-password"><label for="clave">Clave de oficina</label></div>
@@ -245,8 +250,8 @@
   <header class="barra">
     <div class="contenedor">
       <div class="marca">
-        <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M9.5 9.5h5M12 7v5"/></svg></div>
-        <div style="min-width:0"><b class="empresa">Productos BIPA</b><small>Panel de oficina</small></div>
+        <img class="logo" src="logo-bipa.png" alt="BIPA" width="54" height="36"><span class="sep"></span>
+        <div style="min-width:0"><b>Panel de oficina</b><small class="empresa">Productos BIPA</small></div>
       </div>
       <div class="acciones">
         <button class="btn" id="btnActualizar" type="button" title="Actualizar">
@@ -332,7 +337,7 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function toast(msg) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2600); }
 
-  var COLORES = [['#e8eefc', '#1b4dd8'], ['#e3f4ec', '#12805c'], ['#fdf1df', '#a35c00'], ['#f1e9fb', '#6b3fb8'], ['#e4f3f6', '#126b80'], ['#fbe9ef', '#b0325a']];
+  var COLORES = [['#e7f1eb', '#286a4d'], ['#e3f4ec', '#12805c'], ['#fdf1df', '#a35c00'], ['#f1e9fb', '#6b3fb8'], ['#e4f3f6', '#126b80'], ['#fbe9ef', '#b0325a']];
   function avatar(nombre) {
     var t = String(nombre || '?').trim(), h = 0; for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) >>> 0;
     var c = COLORES[h % COLORES.length];

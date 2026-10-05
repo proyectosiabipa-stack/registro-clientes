@@ -26,11 +26,11 @@
     --ink-2: #4a5566;
     --ink-3: #8a94a3;
     --line: #e2e6ec;
-    --accent: #1b4dd8;
-    --accent-ink: #ffffff;
-    --accent-soft: #e8eefc;
-    --ok: #12805c;
-    --ok-soft: #e3f4ec;
+    --accent: #286a4d;
+    --accent-ink: #ffffff; --marca-2: #95cf5f;
+    --accent-soft: #e7f1eb;
+    --ok: #3a7f24;
+    --ok-soft: #eaf5df;
     --warn: #a35c00;
     --warn-soft: #fdf1df;
     --bad: #c4321f;
@@ -54,7 +54,10 @@
   /* Encabezado */
   .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .marca { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
-  .logo { width: 36px; height: 36px; border-radius: 11px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+  .logo { height: 36px; width: auto; display: block; flex-shrink: 0; }
+  .marca .sep { width: 1px; height: 28px; background: var(--line); flex-shrink: 0; }
+  /* Franja con los dos verdes de la marca */
+  .franja { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 50; background: linear-gradient(90deg, #286a4d 0 62%, #95cf5f 62% 100%); }
   .marca b { font-size: 15px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .marca small { display: block; font-size: 12px; color: var(--ink-3); font-weight: 500; }
   .chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px 0 6px; border-radius: 999px; background: var(--surface);
@@ -73,7 +76,7 @@
   .paso .barra { height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
   .paso .barra i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 4px; transition: width .45s var(--ease); }
   .paso.hecho .barra i, .paso.activo .barra i { width: 100%; }
-  .paso.hecho .barra i { background: var(--ok); }
+  .paso.hecho .barra i { background: var(--marca-2); }
   .paso span { font-size: 12px; font-weight: 600; letter-spacing: .02em; }
   .paso.activo span { color: var(--ink); }
   .paso.hecho span { color: var(--ok); }
@@ -160,7 +163,7 @@
          transition: transform .15s var(--ease), opacity .2s; }
   .btn:active { transform: scale(.98); }
   .btn:focus-visible, .chip:focus-visible, .foto:focus-within, .boton-sec:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-  .btn-pri { flex: 1; background: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px rgba(27, 77, 216, .25); }
+  .btn-pri { flex: 1; background: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px rgba(40, 106, 77, .25); }
   .btn-volver { width: 58px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
   .btn:disabled { opacity: .55; }
 
@@ -211,11 +214,12 @@
 </style>
 </head>
 <body>
+<div class="franja" aria-hidden="true"></div>
 <div class="app">
   <header class="top">
     <div class="marca">
-      <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M9.5 9.5h5M12 7v5"/></svg></div>
-      <div style="min-width:0"><b class="empresa">Productos BIPA</b><small>Clientes nuevos</small></div>
+      <img class="logo" src="logo-bipa.png" alt="BIPA" width="54" height="36"><span class="sep"></span>
+      <div style="min-width:0"><b>Clientes nuevos</b><small class="empresa">Productos BIPA</small></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
       <button class="btn-instalar" id="btnInstalar" hidden>Instalar</button>
