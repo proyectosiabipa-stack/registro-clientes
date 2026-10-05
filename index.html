@@ -205,7 +205,7 @@
   <header class="top">
     <div class="marca">
       <div class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M9.5 9.5h5M12 7v5"/></svg></div>
-      <div style="min-width:0"><b class="empresa">Mi Empresa</b><small>Clientes nuevos</small></div>
+      <div style="min-width:0"><b class="empresa">Productos BIPA</b><small>Clientes nuevos</small></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
       <button class="btn-instalar" id="btnInstalar" hidden>Instalar</button>
@@ -232,6 +232,11 @@
         <div class="campo"><input id="c-contacto" name="contacto" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-contacto">Persona de contacto</label></div>
         <div class="campo"><input id="c-telefono" name="telefono" type="tel" inputmode="tel" placeholder=" " enterkeyhint="next"><label for="c-telefono">Teléfono</label></div>
         <div class="campo"><input id="c-correo" name="correo" type="email" inputmode="email" placeholder=" " enterkeyhint="next"><label for="c-correo">Correo</label></div>
+      </div>
+      <div class="etiqueta-seccion">Negocio</div>
+      <div class="tarjeta">
+        <div class="campo"><input id="c-tipo" name="tipoCliente" placeholder=" " autocapitalize="sentences" enterkeyhint="next"><label for="c-tipo">Tipo de cliente</label></div>
+        <div class="campo"><textarea id="c-interes" name="interes" placeholder=" " rows="2" autocapitalize="sentences"></textarea><label for="c-interes">Interés</label></div>
       </div>
       <div class="etiqueta-seccion">Dirección</div>
       <div class="tarjeta">
@@ -373,7 +378,7 @@
   if (!$('vendedor').value) setTimeout(pedirVendedor, 400);
 
   /* ---------- Borrador: no perder lo escrito si se cierra la app ---------- */
-  var CAMPOS = ['nombre', 'contacto', 'telefono', 'correo', 'zona', 'direccion', 'notas', 'mapsLink'];
+  var CAMPOS = ['nombre', 'contacto', 'telefono', 'correo', 'tipoCliente', 'interes', 'zona', 'direccion', 'notas', 'mapsLink'];
   try { var b = JSON.parse(leer('borrador') || '{}'); CAMPOS.forEach(function (k) { if (b[k]) f.elements[k].value = b[k]; }); } catch (e) {}
   f.addEventListener('input', function (e) {
     var b = {}; CAMPOS.forEach(function (k) { b[k] = f.elements[k].value; }); guardar('borrador', JSON.stringify(b));
@@ -500,7 +505,7 @@
   function pintarResumen() {
     var v = function (k) { return esc(f.elements[k].value.trim()) || '—'; };
     var filas = [
-      ['Negocio', v('nombre')], ['Contacto', v('contacto')], ['Teléfono', v('telefono')], ['Zona', v('zona')],
+      ['Negocio', v('nombre')], ['Tipo', v('tipoCliente')], ['Interés', v('interes')], ['Contacto', v('contacto')], ['Teléfono', v('telefono')], ['Zona', v('zona')],
       ['Fotos', (fotos.fotoRif ? 1 : 0) + (fotos.fotoLocal ? 1 : 0) + ' de 2'],
       ['Ubicación', gps ? '±' + gps.precision + ' m' : (f.elements.mapsLink.value.trim() ? 'Enlace de Maps' : 'Pendiente')]
     ];
@@ -515,6 +520,10 @@
     CAMPOS.forEach(function (k) { d[k] = f.elements[k].value.trim(); });
     if (gps) { d.lat = gps.lat; d.lng = gps.lng; d.precision = gps.precision; }
     d.fotoRif = fotos.fotoRif; d.fotoLocal = fotos.fotoLocal;
+    // Si el motor todavía no tiene las columnas nuevas, se guardan dentro de Observaciones
+    if (VERSION_MOTOR < 2 && (d.tipoCliente || d.interes)) {
+      d.notas = [d.tipoCliente && 'Tipo: ' + d.tipoCliente, d.interes && 'Interés: ' + d.interes, d.notas].filter(Boolean).join(' · ');
+    }
     $('enviando').hidden = false; etapa(1);
     setTimeout(function () { etapa(2); }, 500);
     var t3 = setTimeout(function () { etapa(3); }, 2500);
@@ -546,6 +555,10 @@
     $('campoMaps').hidden = true; $('btnManual').hidden = false;
     $('exito').hidden = true; ir(0, true);
   };
+
+  /* ---------- Versión del motor (para campos nuevos) ---------- */
+  var VERSION_MOTOR = 0;
+  google.script.run.withSuccessHandler(function (v) { VERSION_MOTOR = v || 0; }).withFailureHandler(function () {}).version();
 
   /* ---------- Instalar como app ---------- */
   var instalar = null;

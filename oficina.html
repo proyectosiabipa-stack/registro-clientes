@@ -166,7 +166,7 @@
     var fe = document.getElementById('filtroEstado').value, fv = document.getElementById('filtroVendedor').value;
     var lista = DATOS.filter(function (x) {
       return (!fe || x['Estado'] === fe) && (!fv || x['Vendedor'] === fv) &&
-        (!q || [x['Nombre comercial'], x['Razón social'], x['RIF'], x['Vendedor'], x['Zona / Ciudad'], x['Persona de contacto']].join(' ').toLowerCase().indexOf(q) >= 0);
+        (!q || [x['Nombre comercial'], x['Razón social'], x['RIF'], x['Vendedor'], x['Zona / Ciudad'], x['Persona de contacto'], x['Tipo de cliente'], x['Interés']].join(' ').toLowerCase().indexOf(q) >= 0);
     });
     var hoy = new Date().toDateString();
     var c = { total: DATOS.length, pend: 0, hoy: 0 };
@@ -193,7 +193,7 @@
 
   function ver(fila) {
     var x = DATOS.filter(function (r) { return r.fila === fila; })[0];
-    var campos = ['ID', 'Fecha', 'Vendedor', 'RIF', 'Razón social', 'Persona de contacto', 'Teléfono', 'Correo', 'Dirección', 'Zona / Ciudad', 'Precisión GPS (m)', 'Observaciones'];
+    var campos = ['ID', 'Fecha', 'Vendedor', 'Tipo de cliente', 'Interés', 'RIF', 'Razón social', 'Persona de contacto', 'Teléfono', 'Correo', 'Dirección', 'Zona / Ciudad', 'Precisión GPS (m)', 'Observaciones'];
     // Coordenadas tomadas del enlace de Google Maps (más confiable que las columnas)
     var mm = String(x['Google Maps'] || '').match(/q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
     var mapa = mm

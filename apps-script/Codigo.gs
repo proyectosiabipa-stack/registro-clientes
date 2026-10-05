@@ -21,7 +21,8 @@ const COLUMNAS = [
   'ID', 'Fecha', 'Vendedor', 'Nombre comercial', 'Razón social', 'RIF',
   'Persona de contacto', 'Teléfono', 'Correo', 'Dirección', 'Zona / Ciudad',
   'Latitud', 'Longitud', 'Precisión GPS (m)', 'Google Maps',
-  'Foto RIF', 'Foto local', 'Observaciones', 'Estado', 'Nota oficina'
+  'Foto RIF', 'Foto local', 'Observaciones', 'Estado', 'Nota oficina',
+  'Tipo de cliente', 'Interés' // columnas nuevas siempre al final para no desordenar lo ya guardado
 ];
 const ESTADOS = ['Pendiente', 'Aprobado', 'Rechazado'];
 
@@ -70,7 +71,10 @@ function doGet(e) {
 }
 
 /** Las pantallas llaman aquí. Solo se permiten estas funciones. */
-const ACCIONES = { registrarCliente, listarClientes, cambiarEstado, verFoto, urlHoja };
+const ACCIONES = { registrarCliente, listarClientes, cambiarEstado, verFoto, urlHoja, version };
+
+/** Las pantallas preguntan esto para saber qué campos acepta el motor. */
+function version() { return 2; }
 
 function doPost(e) {
   let res;
@@ -112,7 +116,7 @@ function registrarCliente(d) {
       'Teléfono': d.telefono ? "'" + d.telefono : '', // apóstrofo: que la hoja no quite el 0 inicial 'Correo': d.correo || '', 'Dirección': d.direccion || '',
       'Zona / Ciudad': d.zona || '', 'Latitud': d.lat ? Number(d.lat) : '', 'Longitud': d.lng ? Number(d.lng) : '', // números: la hoja en español leía 10.49 como 1049
       'Precisión GPS (m)': d.precision || '', 'Google Maps': maps,
-      'Foto RIF': fotoRif, 'Foto local': fotoLocal, 'Observaciones': d.notas || '',
+      'Foto RIF': fotoRif, 'Foto local': fotoLocal, 'Observaciones': d.notas || '', 'Tipo de cliente': d.tipoCliente || '', 'Interés': d.interes || '',
       'Estado': 'Pendiente', 'Nota oficina': duplicado ? 'OJO: este teléfono ya estaba registrado' : ''
     };
     hoja.appendRow(COLUMNAS.map(c => fila[c]));
@@ -200,7 +204,13 @@ function getHoja_() {
     instalar(); // primera vez: crea la hoja y la carpeta solas
     id = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
   }
-  return SpreadsheetApp.openById(id).getSheetByName(CONFIG.NOMBRE_HOJA);
+  const hoja = SpreadsheetApp.openById(id).getSheetByName(CONFIG.NOMBRE_HOJA);
+  // Si se agregaron columnas nuevas al código, les pone su título en la hoja
+  if (hoja.getLastColumn() < COLUMNAS.length) {
+    hoja.getRange(1, 1, 1, COLUMNAS.length).setValues([COLUMNAS])
+        .setFontWeight('bold').setBackground('#1f4e79').setFontColor('#ffffff');
+  }
+  return hoja;
 }
 
 function validarClave_(clave) {
