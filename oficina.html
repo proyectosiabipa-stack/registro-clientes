@@ -468,7 +468,9 @@
     pintar();
     if (ACTUAL) { var x = buscarFila(ACTUAL); if (x) pintarCabecera(x); }
   }
-  function lineaDe(x) { return x['Línea'] || 'BIPA Productos'; } // los registros viejos son de Productos
+  // Si el motor de Apps Script es viejo, la línea, el tipo y el interés llegan dentro de Observaciones
+  function deObs(x, k) { var m = String(x['Observaciones'] || '').match(new RegExp(k + ': ([^·]+)')); return m ? m[1].trim() : ''; }
+  function lineaDe(x) { return x['Línea'] || deObs(x, 'Línea') || 'BIPA Productos'; } // los registros viejos son de Productos
   function etiquetaLinea(x) { var r = lineaDe(x) === 'BIPA Ritual Sensorial'; return '<span class="tag-linea ' + (r ? 'ritual' : 'productos') + '">' + (r ? 'Ritual' : 'Productos') + '</span>'; }
   function enLinea() { return DATOS.filter(function (x) { return !FILTRO.linea || lineaDe(x) === FILTRO.linea; }); }
   function buscarFila(f) { return DATOS.filter(function (r) { return r.fila === f; })[0]; }
@@ -511,7 +513,7 @@
         (!q || [x['Nombre comercial'], x['Razón social'], x['RIF'], x['Vendedor'], x['Zona / Ciudad'], x['Persona de contacto'], x['Teléfono'], x['Tipo de cliente'], x['Interés'], lineaDe(x)].join(' ').toLowerCase().indexOf(q) >= 0);
     });
     $('filas').innerHTML = lista.length ? lista.map(function (x, i) {
-      var sub = [x['Tipo de cliente'], x['Persona de contacto']].filter(Boolean).join(' · ') || x['Teléfono'] || '';
+      var sub = [x['Tipo de cliente'] || deObs(x, 'Tipo'), x['Persona de contacto']].filter(Boolean).join(' · ') || x['Teléfono'] || '';
       return '<div class="fila' + (ACTUAL === x.fila ? ' sel' : '') + '" tabindex="0" role="button" data-f="' + x.fila + '" style="animation-delay:' + Math.min(i, 12) * 25 + 'ms">' +
         '<div class="cliente c-cli">' + avatar(x['Nombre comercial']) + '<div style="min-width:0"><b>' + esc(x['Nombre comercial'] || 'Sin nombre') + '</b><small>' + etiquetaLinea(x) + esc(sub) + '</small>' +
           (x['Nota oficina'] && /^OJO/.test(x['Nota oficina']) ? '<div class="alerta">' + esc(x['Nota oficina']) + '</div>' : '') +
@@ -560,7 +562,10 @@
       return '<div class="foto"><div class="foto-marco" id="' + id + '">' + (url ? '<div><div class="cargando"></div>Cargando foto…</div>' : 'Sin foto') + '</div>' +
         '<div class="foto-pie"><span>' + titulo + '</span>' + (url ? '<a target="_blank" rel="noopener" href="' + esc(url) + '">Abrir ↗</a>' : '') + '</div></div>';
     }
-    function dato(k, etiqueta, ancho) { return '<div class="dato' + (ancho ? ' ancho' : '') + '"><span>' + (etiqueta || k) + '</span><b>' + (esc(x[k]) || '—') + '</b></div>'; }
+    function dato(k, etiqueta, ancho) {
+      var v = x[k] || (k === 'Tipo de cliente' ? deObs(x, 'Tipo') : k === 'Interés' ? deObs(x, 'Interés') : '');
+      return '<div class="dato' + (ancho ? ' ancho' : '') + '"><span>' + (etiqueta || k) + '</span><b>' + (esc(v) || '—') + '</b></div>';
+    }
     var tel = String(x['Teléfono'] || '').replace(/[^\d+]/g, '');
     $('fCuerpo').innerHTML =
       '<div class="seccion">Qué hacer con este cliente</div>' + tarjetaRecomendacion(x) +

@@ -45,7 +45,10 @@ var REGLAS = {
     [/^Canal Tradicional/i, 'tradicional'],
     [/^Canal Moderno/i, 'moderno'],
     [/^Canal especial/i, 'especial'],
-    [/^Farmacias$/i, 'especial'] // registros de antes de crear "Canal especial"
+    // Tipos de versiones anteriores de la app
+    [/^Farmacias?$/i, 'especial'],
+    [/^(Abasto|Bodega)$/i, 'bodega'],
+    [/^Supermercado$/i, 'tradicional']
   ],
   // Cuando el vendedor eligió "Otros", se busca el canal por palabras del texto
   porPalabras: [
@@ -74,7 +77,7 @@ function recomendar(x, linea) {
     r.sinReglas = 'La línea Ritual Sensorial no tiene reglas de crédito en el manual.';
   } else {
     REGLAS.porTipo.forEach(function (p) { if (!r.canal && p[0].test(tipo)) r.canal = p[1]; });
-    if (!r.canal && /^Otros/i.test(tipo)) {
+    if (!r.canal && tipo) { // "Otros: …" o tipos de versiones anteriores de la app (ej. "Abasto")
       REGLAS.porPalabras.forEach(function (p) { if (!r.canal && p[0].test(tipo)) { r.canal = p[1]; r.porTexto = true; } });
     }
     if (!r.canal) r.sinReglas = tipo ? 'El tipo "' + tipo + '" no corresponde a ningún canal del manual.' : 'El cliente llegó sin tipo de cliente.';
