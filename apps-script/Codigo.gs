@@ -207,3 +207,5 @@ function validarClave_(clave) {
 function soloDigitos_(t) {
   return String(t || '').replace(/\D/g, '').replace(/^0+/, '');
 }
+
+// ====== FIN DEL CÓDIGO ======
