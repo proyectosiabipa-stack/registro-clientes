@@ -478,14 +478,21 @@
   function tiposDe(l) {
     return l === 'BIPA Ritual Sensorial'
       ? ['Supermercados y Autoservicios', 'Farmacias', 'Tiendas de Decoración y Hogar', 'Bodegones & Minimercados Premium', 'Spas y Centros Estéticos']
-      : ['Abastos y Bodegas', 'Canal Tradicional', 'Canal Moderno', 'Farmacias'];
+      : ['Abastos y Bodegas', 'Canal Tradicional', 'Canal Moderno',
+         { grupo: 'Canal especial', tipos: ['Farmacias', 'Hoteles', 'Funerarias', 'Perfumerías', 'Cafeterías'] }];
+  }
+  // Un grupo se guarda como "Canal especial - Hoteles"
+  function valoresTipos(lista) {
+    return lista.reduce(function (r, t) { return r.concat(t.grupo ? t.tipos.map(function (x) { return t.grupo + ' - ' + x; }) : [t]); }, []);
   }
   function pintarTipos() {
     var lista = tiposDe(LINEA).concat(['Otros']), v = $('c-tipo').value, sel = v;
     if (/^Otros: /.test(v)) { sel = 'Otros'; $('c-tipoOtro').value = v.slice(7); }
-    else if (v && lista.indexOf(v) < 0) { sel = ''; $('c-tipo').value = ''; } // era de la otra línea
+    else if (v && valoresTipos(lista).indexOf(v) < 0) { sel = ''; $('c-tipo').value = ''; } // era de la otra línea
+    function opcion(valor, texto) { return '<option value="' + esc(valor) + '">' + esc(texto) + '</option>'; }
     $('sel-tipo').innerHTML = '<option value="">Elige el tipo de cliente</option>' + lista.map(function (t) {
-      return '<option value="' + esc(t) + '">' + esc(t) + '</option>';
+      if (!t.grupo) return opcion(t, t);
+      return '<optgroup label="' + esc(t.grupo) + '">' + t.tipos.map(function (x) { return opcion(t.grupo + ' - ' + x, t.grupo + ' - ' + x); }).join('') + '</optgroup>';
     }).join('');
     $('sel-tipo').value = sel;
     $('campoOtro').hidden = sel !== 'Otros';
