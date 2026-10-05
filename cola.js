@@ -4,6 +4,7 @@
 // el motor lo reconoce y no lo duplica.
 var Cola = (function () {
   var BD = 'registro-clientes', TABLA = 'cola', corriendo = null;
+  var enVuelo = {}; // registros que ya se están enviando (no se mandan dos veces a la vez)
 
   function abrir() {
     return new Promise(function (ok, mal) {
@@ -35,6 +36,7 @@ var Cola = (function () {
 
   // Envía un registro. Si falla la red el error lleva .red = true (se reintenta luego).
   function enviarUno(item) {
+    var id = item.idLocal; enVuelo[id] = true;
     var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var reloj = setTimeout(function () { if (ctl) ctl.abort(); }, 120000);
     return fetch(CONFIG.API_URL, {
@@ -48,8 +50,9 @@ var Cola = (function () {
     }).then(function (j) {
       clearTimeout(reloj);
       if (!j.ok) throw new Error(j.error || 'Error desconocido');
+      delete enVuelo[id];
       return j.data;
-    }, function (e) { clearTimeout(reloj); throw e; });
+    }, function (e) { clearTimeout(reloj); delete enVuelo[id]; throw e; });
   }
 
   // Envía todo lo pendiente, en orden. Se detiene si no hay red.
@@ -60,6 +63,7 @@ var Cola = (function () {
       return lista.reduce(function (p, item) {
         return p.then(function (seguir) {
           if (!seguir) return false;
+          if (enVuelo[item.idLocal]) return true;
           return enviarUno(item).then(function (res) {
             enviados.push({ nombre: item.datos.nombre, id: res.id, duplicado: res.duplicado });
             return quitar(item.idLocal).then(function () { return true; });

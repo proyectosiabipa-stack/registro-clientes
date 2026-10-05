@@ -708,12 +708,22 @@
       $('enviando').hidden = false; etapa(1);
       setTimeout(function () { etapa(2); }, 500);
       var t3 = setTimeout(function () { etapa(3); }, 2500);
+      // Con señal muy débil no se hace esperar al vendedor: a los 20 s queda guardado y se termina de enviar solo
+      var lento = false, tLento = enCola && setTimeout(function () {
+        lento = true; clearTimeout(t3); $('enviando').hidden = true; listo(null, true, true);
+      }, 20000);
       Cola.enviarUno(item).then(function (r) {
-        clearTimeout(t3); etapa(4);
+        clearTimeout(t3); clearTimeout(tLento);
+        if (lento) {
+          Cola.quitar(item.idLocal).catch(function () {}).then(function () { pintarPendientes('✓ Se envió ' + d.nombre); });
+          return;
+        }
+        etapa(4);
         if (enCola) Cola.quitar(item.idLocal).catch(function () {});
         setTimeout(function () { $('enviando').hidden = true; listo(r, false); }, 350);
       }, function (e) {
-        clearTimeout(t3);
+        clearTimeout(t3); clearTimeout(tLento);
+        if (lento) { if (e.red) pedirEnvioFondo(); else pintarPendientes(); return; }
         $('enviando').hidden = true;
         if (e.red && enCola) { listo(null, true); return; }
         if (enCola) Cola.quitar(item.idLocal).catch(function () {});
@@ -722,15 +732,16 @@
     });
   }
 
-  function listo(r, enCola) {
+  function listo(r, enCola, lento) {
     $('exito').hidden = false; $('exito').classList.toggle('en-cola', enCola);
     $('exitoTit').textContent = enCola ? 'Guardado en el teléfono' : '¡Cliente registrado!';
     $('exitoCodigo').textContent = enCola ? 'Por enviar' : r.id;
-    $('exitoDetalle').textContent = enCola ? 'No hay señal. Se enviará solo cuando vuelva la conexión, aunque cierres la app.'
+    $('exitoDetalle').textContent = lento ? 'La señal está débil. Quedó guardado y se terminará de enviar solo. Puedes seguir con el próximo cliente.'
+      : enCola ? 'No hay señal. Se enviará solo cuando vuelva la conexión, aunque cierres la app.'
       : r.duplicado ? 'Ojo: este teléfono ya estaba registrado. La oficina lo revisará.' : 'La oficina ya lo puede ver.';
     if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
     try { localStorage.removeItem('borrador'); } catch (e) {}
-    if (enCola) { pedirEnvioFondo(); pintarPendientes(); }
+    if (enCola) { if (!lento) pedirEnvioFondo(); pintarPendientes(); }
   }
 
   /* ---------- Cola sin señal ---------- */
