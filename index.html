@@ -201,6 +201,39 @@
   .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); transform: translateX(-50%); z-index: 40; background: var(--ink); color: var(--bg);
            padding: 12px 18px; border-radius: 14px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); max-width: calc(100% - 32px); animation: sube .3s var(--ease); }
 
+  /* Las dos líneas de BIPA */
+  :root { --ritual: linear-gradient(120deg, #f6dc7e 0%, #f2948a 52%, #9d97dc 100%); --productos: linear-gradient(120deg, #286a4d 0%, #4f9a55 55%, #95cf5f 100%); }
+  body.ritual { --accent: #5f53a8; --accent-soft: #efedfa; --marca-2: var(--ritual); }
+  body.ritual .franja { background: var(--ritual); }
+  body.ritual .btn-pri { background: var(--ritual); color: #2b2233; box-shadow: 0 8px 22px rgba(157, 151, 220, .45); }
+  body.ritual .btn-pri:disabled { color: rgba(43, 34, 51, .6); }
+
+  .elegir { position: fixed; inset: 0; z-index: 35; overflow-y: auto; background: var(--bg); display: flex; justify-content: center; align-items: center;
+            padding: calc(env(safe-area-inset-top, 0px) + 28px) 20px calc(env(safe-area-inset-bottom, 0px) + 28px); animation: aparece .3s ease; }
+  .elegir::before { content: ""; position: fixed; inset: -20%; z-index: -1; pointer-events: none; opacity: .5; filter: blur(60px);
+                    background: radial-gradient(circle at 15% 20%, #f6dc7e55, transparent 40%), radial-gradient(circle at 85% 30%, #f2948a44, transparent 40%), radial-gradient(circle at 50% 90%, #9d97dc44, transparent 45%); }
+  .elegir-caja { width: 100%; max-width: 440px; text-align: center; }
+  .elegir-caja img { width: 168px; height: auto; margin-bottom: 26px; }
+  .elegir-caja h2 { font-size: 26px; letter-spacing: -.025em; margin: 0 0 6px; line-height: 1.2; }
+  .elegir-caja > p { color: var(--ink-2); margin: 0 0 26px; }
+  .opcion-linea { width: 100%; display: flex; align-items: center; gap: 16px; text-align: left; border: 0; border-radius: 24px; padding: 22px 20px; min-height: 112px;
+                  font: inherit; cursor: pointer; margin-bottom: 14px; box-shadow: 0 10px 28px rgba(15, 23, 34, .10); transition: transform .15s var(--ease), box-shadow .2s; }
+  .opcion-linea:active { transform: scale(.98); }
+  .opcion-linea:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .opcion-linea.ritual { background: var(--ritual); color: #2b2233; }
+  .opcion-linea.productos { background: var(--productos); color: #fff; }
+  .opcion-linea .ol-ico { width: 56px; height: 56px; border-radius: 50%; background: rgba(255, 255, 255, .45); display: grid; place-items: center; flex-shrink: 0; }
+  .opcion-linea.productos .ol-ico { background: rgba(255, 255, 255, .2); }
+  .opcion-linea b { display: block; font-size: 19px; letter-spacing: -.01em; }
+  .opcion-linea small { display: block; font-size: 14px; font-weight: 500; opacity: .85; margin-top: 2px; }
+  .opcion-linea .ol-txt { flex: 1; min-width: 0; }
+
+  .linea-actual { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px;
+                  background: var(--surface); font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; text-align: left; }
+  .linea-actual i { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; background: var(--productos); }
+  body.ritual .linea-actual i { background: var(--ritual); }
+  .linea-actual small { margin-left: auto; color: var(--accent); font-size: 13px; }
+
   /* Registros guardados en el teléfono esperando señal */
   .pendientes { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 16px; padding: 12px 14px; border: 0; border-radius: 14px;
                 background: var(--warn-soft); color: var(--warn); font: inherit; font-weight: 700; font-size: 14px; text-align: left; cursor: pointer; }
@@ -226,6 +259,8 @@
       <button class="chip" id="chipVendedor" type="button" aria-label="Cambiar vendedor"><span class="ini" id="iniVendedor">?</span><span id="nomVendedor">Tu nombre</span></button>
     </div>
   </header>
+
+  <button class="linea-actual" id="lineaActual" type="button" hidden><i></i><span id="lineaNombre"></span><small>Cambiar</small></button>
 
   <button class="pendientes" id="pendientes" type="button" hidden><span class="pt"></span><span id="pendTxt"></span><small id="pendAccion">Enviar ahora</small></button>
 
@@ -322,6 +357,25 @@
   </div>
 </div>
 
+<!-- Elegir línea -->
+<div class="elegir" id="elegir" hidden>
+  <div class="elegir-caja">
+    <img src="logo-bipa-completo.png" alt="BIPA · Buenas ideas puestas en acción" width="168" height="102">
+    <h2>¿Qué línea vas a registrar?</h2>
+    <p>El cliente quedará guardado con esa línea.</p>
+    <button class="opcion-linea ritual" type="button" data-l="BIPA Ritual Sensorial">
+      <span class="ol-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c2.5 3 4 5.2 4 7.5a4 4 0 0 1-8 0c0-1.4.6-2.6 1.5-3.6.3 1.3 1 2.1 2 2.1-.8-2.2-.3-4.1.5-6z"/><path d="M8 21h8M10 17h4v4h-4z"/></svg></span>
+      <span class="ol-txt"><b>BIPA Ritual Sensorial</b><small>Velas aromáticas</small></span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+    <button class="opcion-linea productos" type="button" data-l="BIPA Productos">
+      <span class="ol-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20c0-8 5-13 14-14-1 9-6 14-14 14z"/><path d="M5 20c3-4 6-7 9-9"/></svg></span>
+      <span class="ol-txt"><b>BIPA Productos</b><small>Productos principales</small></span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+  </div>
+</div>
+
 <!-- Nombre del vendedor -->
 <div class="velo" id="velo" hidden>
   <div class="hoja" role="dialog" aria-labelledby="hojaTit">
@@ -391,7 +445,26 @@
   $('inVendedor').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('btnGuardarVendedor').click(); });
   $('vendedor').value = leer('vendedor') || '';
   pintarVendedor();
-  if (!$('vendedor').value) setTimeout(pedirVendedor, 400);
+
+  /* ---------- Línea: BIPA Ritual Sensorial o BIPA Productos ---------- */
+  var LINEA = leer('linea') || '';
+  function ponerLinea(l) {
+    LINEA = l; guardar('linea', l);
+    document.body.classList.toggle('ritual', l === 'BIPA Ritual Sensorial');
+    $('lineaNombre').textContent = l; $('lineaActual').hidden = !l;
+    var tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = '#f5f6f8';
+  }
+  function elegirLinea() { $('elegir').hidden = false; }
+  document.querySelectorAll('.opcion-linea').forEach(function (b) {
+    b.onclick = function () {
+      ponerLinea(b.dataset.l); $('elegir').hidden = true;
+      if (!$('vendedor').value) setTimeout(pedirVendedor, 250);
+    };
+  });
+  $('lineaActual').onclick = elegirLinea;
+  if (LINEA) ponerLinea(LINEA);
+  if (CONFIG.ELEGIR_LINEA_SIEMPRE || !LINEA) elegirLinea();
+  else if (!$('vendedor').value) setTimeout(pedirVendedor, 400);
 
   /* ---------- Borrador: no perder lo escrito si se cierra la app ---------- */
   var CAMPOS = ['nombre', 'contacto', 'telefono', 'correo', 'tipoCliente', 'interes', 'zona', 'direccion', 'notas', 'mapsLink'];
@@ -532,7 +605,8 @@
   function etapa(n) { for (var i = 1; i <= 3; i++) { var e = $('et' + i); e.className = 'etapa' + (i < n ? ' lista' : i === n ? ' activa' : ''); } }
   function enviar() {
     if (!$('vendedor').value) { pedirVendedor(); return; }
-    var d = { vendedor: $('vendedor').value, idLocal: Cola.nuevoId() };
+    if (!LINEA) { elegirLinea(); return; }
+    var d = { vendedor: $('vendedor').value, idLocal: Cola.nuevoId(), linea: LINEA };
     CAMPOS.forEach(function (k) { d[k] = f.elements[k].value.trim(); });
     if (gps) { d.lat = gps.lat; d.lng = gps.lng; d.precision = gps.precision; }
     d.fotoRif = fotos.fotoRif; d.fotoLocal = fotos.fotoLocal;
@@ -540,6 +614,8 @@
     if (VERSION_MOTOR < 2 && (d.tipoCliente || d.interes)) {
       d.notas = [d.tipoCliente && 'Tipo: ' + d.tipoCliente, d.interes && 'Interés: ' + d.interes, d.notas].filter(Boolean).join(' · ');
     }
+    // Motor sin la columna Línea todavía: queda escrita en Observaciones
+    if (VERSION_MOTOR < 4) d.notas = ['Línea: ' + LINEA, d.notas].filter(Boolean).join(' · ');
     var item = { idLocal: d.idLocal, datos: d, creado: Date.now() };
     // Primero queda guardado en el teléfono; así nada se pierde si se cae la señal
     Cola.guardar(item).then(function () { return true; }, function () { return false; }).then(function (enCola) {

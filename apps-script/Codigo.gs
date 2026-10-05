@@ -23,8 +23,9 @@ const COLUMNAS = [
   'Latitud', 'Longitud', 'Precisión GPS (m)', 'Google Maps',
   'Foto RIF', 'Foto local', 'Observaciones', 'Estado', 'Nota oficina',
   'Tipo de cliente', 'Interés', // columnas nuevas siempre al final
-  'Exportado'                     // para no desordenar lo ya guardado
+  'Exportado', 'Línea'            // para no desordenar lo ya guardado
 ];
+const LINEAS = ['BIPA Productos', 'BIPA Ritual Sensorial'];
 const ESTADOS = ['Pendiente', 'Aprobado', 'Rechazado'];
 
 // ====== ARRANQUE ======
@@ -78,7 +79,7 @@ const ACCIONES = {
 };
 
 /** Las pantallas preguntan esto para saber qué campos acepta el motor. */
-function version() { return 3; }
+function version() { return 4; }
 
 function doPost(e) {
   let res;
@@ -108,14 +109,17 @@ function registrarCliente(d) {
   try {
     if (llave && cache.get(llave)) return JSON.parse(cache.get(llave));
     hoja = getHoja_();
-    // Aviso de duplicado por teléfono
+    // Aviso de duplicado por teléfono, solo dentro de la misma línea
+    // (una tienda puede comprar velas y productos a la vez)
+    const linea = LINEAS.indexOf(d.linea) >= 0 ? d.linea : LINEAS[0];
     const tel = soloDigitos_(d.telefono);
     const filas = hoja.getLastRow() > 1
-      ? hoja.getRange(2, COLUMNAS.indexOf('Teléfono') + 1,
-          hoja.getLastRow() - 1, 1).getValues()
+      ? hoja.getRange(2, 1, hoja.getLastRow() - 1, COLUMNAS.length).getValues()
       : [];
-    const duplicado = tel.length >= 7 &&
-      filas.some(r => soloDigitos_(r[0]) === tel);
+    const cTel = COLUMNAS.indexOf('Teléfono');
+    const cLin = COLUMNAS.indexOf('Línea');
+    const duplicado = tel.length >= 7 && filas.some(r =>
+      soloDigitos_(r[cTel]) === tel && (r[cLin] || LINEAS[0]) === linea);
     const nombreArchivo = String(d.nombre)
       .replace(/[^\w áéíóúñÁÉÍÓÚÑ-]/g, '').trim().slice(0, 40);
 
@@ -156,7 +160,8 @@ function registrarCliente(d) {
       'Interés': d.interes || '',
       'Estado': 'Pendiente',
       'Nota oficina': duplicado ? 'OJO: este teléfono ya estaba registrado' : '',
-      'Exportado': ''
+      'Exportado': '',
+      'Línea': linea
     };
     hoja.appendRow(COLUMNAS.map(c => fila[c]));
     numFila = hoja.getLastRow();
@@ -192,7 +197,8 @@ function avisarPorCorreo_(f) {
   const url = CONFIG.URL_PORTAL + 'oficina.html';
   MailApp.sendEmail({
     to: destino,
-    subject: 'Cliente nuevo: ' + f['Nombre comercial'] + ' (' + f['Vendedor'] + ')',
+    subject: 'Cliente nuevo ' + (f['Línea'] || '') + ': ' +
+      f['Nombre comercial'] + ' (' + f['Vendedor'] + ')',
     htmlBody: '<b>' + f['Nombre comercial'] + '</b><br>' +
       'Vendedor: ' + f['Vendedor'] + '<br>' +
       'Teléfono: ' + String(f['Teléfono']).replace(/^'/, '') + '<br>' +

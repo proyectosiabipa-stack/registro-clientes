@@ -2,7 +2,7 @@
 // aunque la app esté cerrada (Android). Siempre intenta traer la versión más nueva de internet.
 importScripts('config.js', 'cola.js');
 
-var CACHE = 'registro-clientes-v3';
+var CACHE = 'registro-clientes-v4';
 var BASICOS = ['./', 'index.html', 'oficina.html', 'config.js', 'api.js', 'cola.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'logo-bipa.png', 'logo-bipa-completo.png'];
 
 self.addEventListener('install', function (e) {

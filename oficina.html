@@ -180,6 +180,17 @@
   .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); transform: translateX(-50%); z-index: 40; background: var(--ink); color: #fff;
            padding: 12px 18px; border-radius: 14px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow-lg); max-width: calc(100% - 32px); width: max-content; text-align: center; animation: sube .3s var(--ease); }
 
+  /* Las dos líneas de BIPA */
+  :root { --ritual: linear-gradient(120deg, #f6dc7e 0%, #f2948a 52%, #9d97dc 100%); --productos: linear-gradient(120deg, #286a4d 0%, #4f9a55 55%, #95cf5f 100%); }
+  .lineas { display: inline-flex; background: var(--surface); border-radius: 14px; padding: 4px; gap: 4px; box-shadow: var(--shadow); }
+  .lineas button { height: 38px; padding: 0 16px; border: 0; border-radius: 10px; background: transparent; color: var(--ink-2); font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; white-space: nowrap; transition: background .2s, color .2s; }
+  .lineas button.activo { background: var(--ink); color: #fff; }
+  .lineas button.l-ritual.activo { background: var(--ritual); color: #2b2233; }
+  .lineas button.l-productos.activo { background: var(--productos); color: #fff; }
+  .tag-linea { display: inline-block; vertical-align: 1px; margin-right: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .01em; }
+  .tag-linea.ritual { background: var(--ritual); color: #2b2233; }
+  .tag-linea.productos { background: var(--productos); color: #fff; }
+
   /* Datos fiscales leídos de la foto */
   .fiscal-pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-3); font-weight: 500; }
   .fiscal-pie button { border: 0; background: var(--accent-soft); color: var(--accent); font: inherit; font-weight: 700; font-size: 13px; height: 34px; padding: 0 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
@@ -213,6 +224,8 @@
     .fila .c-fec { grid-area: fec; justify-self: end; }
     .fila .c-fec small { font-size: 12px; }
     .seg { display: flex; width: 100%; }
+    .lineas { display: flex; width: 100%; }
+    .lineas button { flex: 1; padding: 0 6px; font-size: 13px; }
     .seg button { flex: 1; padding: 0 6px; font-size: 13px; }
     .acciones .txt { display: none; }
     .acciones .btn { width: 44px; padding: 0; }
@@ -273,6 +286,11 @@
   <main class="contenedor">
     <div class="cabeza">
       <div><h1>Clientes nuevos</h1><p id="actualizado">Cargando…</p></div>
+      <div class="lineas" id="segLinea" role="tablist" aria-label="Línea">
+        <button type="button" data-l="" class="activo">Todas</button>
+        <button type="button" data-l="BIPA Ritual Sensorial" class="l-ritual">Ritual Sensorial</button>
+        <button type="button" data-l="BIPA Productos" class="l-productos">Productos</button>
+      </div>
     </div>
 
     <div class="kpis" id="kpis"></div>
@@ -332,7 +350,7 @@
 <div class="visor" id="visor" hidden><img id="visorImg" alt="Foto ampliada"></div>
 
 <script>
-  var CLAVE = '', DATOS = [], FILTRO = { estado: '', vendedor: '', q: '' }, ACTUAL = null, ESTADO_SEL = '', refresco = null, ULTIMA = null;
+  var CLAVE = '', DATOS = [], FILTRO = { estado: '', vendedor: '', q: '', linea: '' }, ACTUAL = null, ESTADO_SEL = '', refresco = null, ULTIMA = null;
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function toast(msg) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2600); }
@@ -414,17 +432,21 @@
   function recibir(d) {
     DATOS = d || [];
     var sel = $('filtroVendedor'), actual = sel.value;
-    var vend = Array.from(new Set(DATOS.map(function (x) { return x['Vendedor']; }).filter(Boolean))).sort();
+    var vend = Array.from(new Set(enLinea().map(function (x) { return x['Vendedor']; }).filter(Boolean))).sort();
     sel.innerHTML = '<option value="">Todos los vendedores</option>' + vend.map(function (v) { return '<option>' + esc(v) + '</option>'; }).join('');
     sel.value = actual;
     pintar();
     if (ACTUAL) { var x = buscarFila(ACTUAL); if (x) pintarCabecera(x); }
   }
+  function lineaDe(x) { return x['Línea'] || 'BIPA Productos'; } // los registros viejos son de Productos
+  function etiquetaLinea(x) { var r = lineaDe(x) === 'BIPA Ritual Sensorial'; return '<span class="tag-linea ' + (r ? 'ritual' : 'productos') + '">' + (r ? 'Ritual' : 'Productos') + '</span>'; }
+  function enLinea() { return DATOS.filter(function (x) { return !FILTRO.linea || lineaDe(x) === FILTRO.linea; }); }
   function buscarFila(f) { return DATOS.filter(function (r) { return r.fila === f; })[0]; }
 
   function pintar() {
-    var hoy = new Date().toDateString(), c = { total: DATOS.length, Pendiente: 0, Aprobado: 0, hoy: 0 };
-    DATOS.forEach(function (x) { if (c[x['Estado']] !== undefined) c[x['Estado']]++; if (x.fechaISO && new Date(x.fechaISO).toDateString() === hoy) c.hoy++; });
+    var BASE = enLinea();
+    var hoy = new Date().toDateString(), c = { total: BASE.length, Pendiente: 0, Aprobado: 0, hoy: 0 };
+    BASE.forEach(function (x) { if (c[x['Estado']] !== undefined) c[x['Estado']]++; if (x.fechaISO && new Date(x.fechaISO).toDateString() === hoy) c.hoy++; });
     var kp = [['', 'Total registrados', c.total, ''], ['Pendiente', 'Por revisar', c.Pendiente, 'Pendiente'], ['Aprobado', 'Aprobados', c.Aprobado, 'Aprobado'], ['hoy', 'Registrados hoy', c.hoy, 'hoy']];
     $('kpis').innerHTML = kp.map(function (k) {
       var act = k[0] !== 'hoy' && FILTRO.estado === k[0] && (k[0] !== '' || true);
@@ -433,14 +455,14 @@
     document.querySelectorAll('.kpi').forEach(function (b) { b.onclick = function () { if (b.dataset.k !== 'hoy') ponerEstado(b.dataset.k); }; });
 
     var q = FILTRO.q.toLowerCase();
-    var lista = DATOS.filter(function (x) {
+    var lista = BASE.filter(function (x) {
       return (!FILTRO.estado || x['Estado'] === FILTRO.estado) && (!FILTRO.vendedor || x['Vendedor'] === FILTRO.vendedor) &&
-        (!q || [x['Nombre comercial'], x['Razón social'], x['RIF'], x['Vendedor'], x['Zona / Ciudad'], x['Persona de contacto'], x['Teléfono'], x['Tipo de cliente'], x['Interés']].join(' ').toLowerCase().indexOf(q) >= 0);
+        (!q || [x['Nombre comercial'], x['Razón social'], x['RIF'], x['Vendedor'], x['Zona / Ciudad'], x['Persona de contacto'], x['Teléfono'], x['Tipo de cliente'], x['Interés'], lineaDe(x)].join(' ').toLowerCase().indexOf(q) >= 0);
     });
     $('filas').innerHTML = lista.length ? lista.map(function (x, i) {
       var sub = [x['Tipo de cliente'], x['Persona de contacto']].filter(Boolean).join(' · ') || x['Teléfono'] || '';
       return '<div class="fila' + (ACTUAL === x.fila ? ' sel' : '') + '" tabindex="0" role="button" data-f="' + x.fila + '" style="animation-delay:' + Math.min(i, 12) * 25 + 'ms">' +
-        '<div class="cliente c-cli">' + avatar(x['Nombre comercial']) + '<div style="min-width:0"><b>' + esc(x['Nombre comercial'] || 'Sin nombre') + '</b><small>' + esc(sub) + '</small>' +
+        '<div class="cliente c-cli">' + avatar(x['Nombre comercial']) + '<div style="min-width:0"><b>' + esc(x['Nombre comercial'] || 'Sin nombre') + '</b><small>' + etiquetaLinea(x) + esc(sub) + '</small>' +
           (x['Nota oficina'] && /^OJO/.test(x['Nota oficina']) ? '<div class="alerta">' + esc(x['Nota oficina']) + '</div>' : '') + '</div></div>' +
         '<div class="celda c-ven"><b>' + esc(x['Vendedor']) + '</b></div>' +
         '<div class="celda c-zona"><small>' + esc(x['Zona / Ciudad'] || '—') + '</small></div>' +
@@ -448,8 +470,8 @@
         '<div class="c-est"><span class="pill ' + esc(x['Estado']) + '">' + esc(x['Estado']) + '</span></div>' +
         '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>' +
       '</div>';
-    }).join('') : '<div class="vacio"><b>' + (DATOS.length ? 'Nada coincide con el filtro' : 'Todavía no hay clientes') + '</b>' +
-      (DATOS.length ? 'Prueba con otra búsqueda o quita los filtros.' : 'Cuando un vendedor registre uno, aparece aquí solo.') + '</div>';
+    }).join('') : '<div class="vacio"><b>' + (BASE.length ? 'Nada coincide con el filtro' : 'Todavía no hay clientes') + '</b>' +
+      (BASE.length ? 'Prueba con otra búsqueda o quita los filtros.' : 'Cuando un vendedor registre uno, aparece aquí solo.') + '</div>';
     document.querySelectorAll('.fila').forEach(function (r) {
       r.onclick = function () { abrir(+r.dataset.f); };
       r.onkeydown = function (e) { if (e.key === 'Enter') abrir(+r.dataset.f); };
@@ -461,13 +483,21 @@
     pintar();
   }
   document.querySelectorAll('#segEstado button').forEach(function (b) { b.onclick = function () { ponerEstado(b.dataset.e); }; });
+  function ponerLinea(l) {
+    FILTRO.linea = l; FILTRO.vendedor = '';
+    try { localStorage.setItem('oficina-linea', l); } catch (e) {}
+    document.querySelectorAll('#segLinea button').forEach(function (b) { b.classList.toggle('activo', b.dataset.l === l); });
+    recibir(DATOS);
+  }
+  document.querySelectorAll('#segLinea button').forEach(function (b) { b.onclick = function () { ponerLinea(b.dataset.l); }; });
+  try { var lg = localStorage.getItem('oficina-linea'); if (lg) { FILTRO.linea = lg; document.querySelectorAll('#segLinea button').forEach(function (b) { b.classList.toggle('activo', b.dataset.l === lg); }); } } catch (e) {}
   $('buscar').addEventListener('input', function () { FILTRO.q = this.value; pintar(); });
   $('filtroVendedor').onchange = function () { FILTRO.vendedor = this.value; pintar(); };
 
   /* ---------- Ficha ---------- */
   function pintarCabecera(x) {
     $('fNombre').textContent = x['Nombre comercial'] || 'Sin nombre';
-    $('fSub').textContent = 'Registrado por ' + (x['Vendedor'] || '—') + ' · ' + (x['Fecha'] || '');
+    $('fSub').innerHTML = etiquetaLinea(x) + 'Registrado por ' + esc(x['Vendedor'] || '—') + ' · ' + esc(x['Fecha'] || '');
   }
   function abrir(fila) {
     var x = buscarFila(fila); if (!x) return;
@@ -553,22 +583,23 @@
   }
 
   /* ---------- Exportar a Excel ---------- */
-  var COLS_EXP = [['ID', 'Código'], ['RIF', 'RIF'], ['Razón social', 'Razón social'], ['Nombre comercial', 'Nombre comercial'], ['Persona de contacto', 'Persona de contacto'],
+  var COLS_EXP = [['ID', 'Código'], ['Línea', 'Línea'], ['RIF', 'RIF'], ['Razón social', 'Razón social'], ['Nombre comercial', 'Nombre comercial'], ['Persona de contacto', 'Persona de contacto'],
     ['Teléfono', 'Teléfono'], ['Correo', 'Correo'], ['Dirección', 'Dirección'], ['Zona / Ciudad', 'Zona / Ciudad'], ['Tipo de cliente', 'Tipo de cliente'], ['Interés', 'Interés'],
     ['Vendedor', 'Vendedor'], ['Fecha', 'Fecha de registro'], ['Latitud', 'Latitud'], ['Longitud', 'Longitud'], ['Google Maps', 'Google Maps'], ['Observaciones', 'Observaciones'], ['Nota oficina', 'Nota oficina']];
-  function aprobados(soloNuevos) { return DATOS.filter(function (x) { return x['Estado'] === 'Aprobado' && (!soloNuevos || !x['Exportado']); }).reverse(); }
+  function aprobados(soloNuevos) { return enLinea().filter(function (x) { return x['Estado'] === 'Aprobado' && (!soloNuevos || !x['Exportado']); }).reverse(); }
   $('btnExportar').onclick = function () {
     var n = aprobados(true).length, t = aprobados(false).length;
     $('expNuevosN').textContent = n; $('expTodosN').textContent = t;
     $('expNuevos').disabled = !n; $('expTodos').disabled = !t;
+    $('expTit').textContent = 'Exportar aprobados' + (FILTRO.linea ? ' · ' + FILTRO.linea.replace('BIPA ', '') : '');
     $('exportar').hidden = false;
   };
   $('expCerrar').onclick = $('veloExp').onclick = function () { $('exportar').hidden = true; };
   function exportar(soloNuevos) {
     var lista = aprobados(soloNuevos); if (!lista.length) return;
-    var filas = [COLS_EXP.map(function (c) { return c[1]; })].concat(lista.map(function (x) { return COLS_EXP.map(function (c) { return x[c[0]] || ''; }); }));
+    var filas = [COLS_EXP.map(function (c) { return c[1]; })].concat(lista.map(function (x) { return COLS_EXP.map(function (c) { return c[0] === 'Línea' ? lineaDe(x) : x[c[0]] || ''; }); }));
     var hoy = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
-    Excel.descargar(Excel.crear(filas, 'Clientes'), 'clientes-' + (soloNuevos ? 'nuevos' : 'aprobados') + '-' + hoy.getFullYear() + '-' + p(hoy.getMonth() + 1) + '-' + p(hoy.getDate()) + '.xlsx');
+    Excel.descargar(Excel.crear(filas, 'Clientes'), 'clientes-' + (FILTRO.linea === 'BIPA Ritual Sensorial' ? 'ritual-' : FILTRO.linea ? 'productos-' : '') + (soloNuevos ? 'nuevos' : 'aprobados') + '-' + hoy.getFullYear() + '-' + p(hoy.getMonth() + 1) + '-' + p(hoy.getDate()) + '.xlsx');
     $('exportar').hidden = true;
     if (!soloNuevos) { toast('Descargado: ' + lista.length + ' clientes'); return; }
     var nums = lista.map(function (x) { return x.fila; });
