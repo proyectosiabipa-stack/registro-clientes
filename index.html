@@ -227,6 +227,11 @@
   .opcion-linea b { display: block; font-size: 19px; letter-spacing: -.01em; }
   .opcion-linea small { display: block; font-size: 14px; font-weight: 500; opacity: .85; margin-top: 2px; }
   .opcion-linea .ol-txt { flex: 1; min-width: 0; }
+  .opcion-linea .ol-logo { width: 84px; height: auto; flex-shrink: 0; }
+  .opcion-linea.productos .ol-logo { width: 72px; margin: 0 6px; }
+  .logo-ritual { display: none; }
+  body.ritual .logo-ritual { display: block; height: 44px; margin: -4px 0; }
+  body.ritual .logo-productos { display: none; }
 
   .linea-actual { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px;
                   background: var(--surface); font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; text-align: left; }
@@ -251,8 +256,8 @@
 <div class="app">
   <header class="top">
     <div class="marca">
-      <img class="logo" src="logo-bipa.png" alt="BIPA" width="54" height="36"><span class="sep"></span>
-      <div style="min-width:0"><b>Clientes nuevos</b><small class="empresa">Productos BIPA</small></div>
+      <img class="logo logo-productos" src="logo-bipa.png" alt="BIPA" width="54" height="36"><img class="logo logo-ritual" src="logo-ritual.png" alt="BIPA Ritual Sensorial" width="61" height="44"><span class="sep"></span>
+      <div style="min-width:0"><b>Clientes nuevos</b><small>Productos BIPA</small></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
       <button class="btn-instalar" id="btnInstalar" hidden>Instalar</button>
@@ -364,12 +369,12 @@
     <h2>¿Qué línea vas a registrar?</h2>
     <p>El cliente quedará guardado con esa línea.</p>
     <button class="opcion-linea ritual" type="button" data-l="BIPA Ritual Sensorial">
-      <span class="ol-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c2.5 3 4 5.2 4 7.5a4 4 0 0 1-8 0c0-1.4.6-2.6 1.5-3.6.3 1.3 1 2.1 2 2.1-.8-2.2-.3-4.1.5-6z"/><path d="M8 21h8M10 17h4v4h-4z"/></svg></span>
+      <img class="ol-logo" src="logo-ritual.png" alt="" width="84" height="60">
       <span class="ol-txt"><b>BIPA Ritual Sensorial</b><small>Velas aromáticas</small></span>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
     </button>
     <button class="opcion-linea productos" type="button" data-l="BIPA Productos">
-      <span class="ol-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20c0-8 5-13 14-14-1 9-6 14-14 14z"/><path d="M5 20c3-4 6-7 9-9"/></svg></span>
+      <img class="ol-logo" src="logo-bipa-blanco.png" alt="" width="72" height="48">
       <span class="ol-txt"><b>BIPA Productos</b><small>Productos principales</small></span>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
     </button>
@@ -452,6 +457,7 @@
     LINEA = l; guardar('linea', l);
     document.body.classList.toggle('ritual', l === 'BIPA Ritual Sensorial');
     $('lineaNombre').textContent = l; $('lineaActual').hidden = !l;
+    var sub = document.querySelector('.marca small'); if (sub) sub.textContent = l === 'BIPA Ritual Sensorial' ? 'BIPA Ritual Sensorial' : 'Productos BIPA';
     var tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = '#f5f6f8';
   }
   function elegirLinea() { $('elegir').hidden = false; }
