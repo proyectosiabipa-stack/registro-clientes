@@ -151,12 +151,20 @@ function listarClientes(clave) {
   validarClave_(clave);
   const hoja = getHoja_();
   if (hoja.getLastRow() < 2) return [];
-  const rango = hoja.getRange(2, 1, hoja.getLastRow() - 1, COLUMNAS.length);
-  const datos = rango.getDisplayValues();
-  const fechas = rango.getValues().map(r => r[COLUMNAS.indexOf('Fecha')]);
+  // Una sola lectura de la hoja (es lo que más tarda)
+  const datos = hoja.getRange(2, 1, hoja.getLastRow() - 1, COLUMNAS.length).getValues();
+  const zona = Session.getScriptTimeZone();
   return datos.map((r, i) => {
-    const o = { fila: i + 2, fechaISO: fechas[i] instanceof Date ? fechas[i].toISOString() : '' };
-    COLUMNAS.forEach((c, j) => o[c] = r[j]);
+    const o = { fila: i + 2, fechaISO: '' };
+    COLUMNAS.forEach((c, j) => {
+      const v = r[j];
+      if (v instanceof Date) {
+        o[c] = Utilities.formatDate(v, zona, 'dd/MM/yyyy HH:mm');
+        if (c === 'Fecha') o.fechaISO = v.toISOString();
+      } else {
+        o[c] = v === null || v === undefined ? '' : String(v);
+      }
+    });
     return o;
   }).reverse();
 }
@@ -199,8 +207,12 @@ function validarClave_(clave) {
   // La clave se guarda en la app la primera vez que la cambias en CONFIG,
   // así no se pierde si luego se pega una versión nueva de este código.
   const props = PropertiesService.getScriptProperties();
-  if (CONFIG.CLAVE_OFICINA && CONFIG.CLAVE_OFICINA !== 'cambiar1234') props.setProperty('CLAVE_OFICINA', CONFIG.CLAVE_OFICINA);
-  const real = props.getProperty('CLAVE_OFICINA') || CONFIG.CLAVE_OFICINA;
+  let real = props.getProperty('CLAVE_OFICINA');
+  if (CONFIG.CLAVE_OFICINA && CONFIG.CLAVE_OFICINA !== 'cambiar1234' && CONFIG.CLAVE_OFICINA !== real) {
+    props.setProperty('CLAVE_OFICINA', CONFIG.CLAVE_OFICINA);
+    real = CONFIG.CLAVE_OFICINA;
+  }
+  real = real || CONFIG.CLAVE_OFICINA;
   if (clave !== real) throw new Error('Clave incorrecta');
 }
 

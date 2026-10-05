@@ -50,7 +50,7 @@
 <header>
   <h1>Clientes nuevos · <span class="empresa"></span></h1>
   <div id="acciones" style="display:none">
-    <button onclick="cargar()">↻ Actualizar</button>
+    <button id="btnActualizar" onclick="cargar()">↻ Actualizar</button>
     <button onclick="abrirHoja()">Abrir en Google Sheets</button>
   </div>
 </header>
@@ -58,7 +58,7 @@
 <div id="login">
   <h2>Portal de oficina</h2>
   <input type="password" id="clave" placeholder="Clave" onkeydown="if(event.key==='Enter')entrar()">
-  <button onclick="entrar()" style="width:100%;background:var(--azul);color:#fff;border:0;font-size:16px;padding:12px">Entrar</button>
+  <button id="btnEntrar" onclick="entrar()" style="width:100%;background:var(--azul);color:#fff;border:0;font-size:16px;padding:12px">Entrar</button>
   <p id="loginErr" class="alerta"></p>
 </div>
 
@@ -88,22 +88,60 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
-  function entrar(guardada) {
+  var refresco = null;
+
+  // Guarda la última lista en esta computadora para mostrarla al instante la próxima vez
+  async function huella(c) {
+    try {
+      var h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('registro-clientes:' + c));
+      return Array.from(new Uint8Array(h)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    } catch (e) { return null; }
+  }
+  function leerCache() { try { return JSON.parse(localStorage.getItem('oficina-cache') || 'null'); } catch (e) { return null; } }
+  function guardarCache(d) { huella(CLAVE).then(function (h) { try { if (h) localStorage.setItem('oficina-cache', JSON.stringify({ h: h, d: d })); } catch (e) {} }); }
+
+  function mostrarApp() {
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('acciones').style.display = 'block';
+    if (!refresco) refresco = setInterval(cargar, 60000); // se actualiza solo cada minuto
+  }
+
+  function actualizando(si) {
+    var b = document.getElementById('btnActualizar');
+    if (b) { b.disabled = si; b.textContent = si ? 'Actualizando...' : '↻ Actualizar'; }
+  }
+
+  async function entrar(guardada) {
     CLAVE = guardada || document.getElementById('clave').value;
+    var btn = document.getElementById('btnEntrar'), err = document.getElementById('loginErr');
+    err.textContent = '';
+    var cache = leerCache(), h = await huella(CLAVE), rapido = !!(cache && h && cache.h === h);
+    if (rapido) { mostrarApp(); recibir(cache.d); actualizando(true); }
+    else { btn.disabled = true; btn.textContent = 'Entrando...'; }
     google.script.run.withSuccessHandler(function (d) {
       try { sessionStorage.setItem('clave', CLAVE); } catch (e) {}
-      document.getElementById('login').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      document.getElementById('acciones').style.display = 'block';
-      recibir(d);
-      setInterval(cargar, 60000); // se actualiza solo cada minuto
+      mostrarApp(); recibir(d); guardarCache(d); actualizando(false);
+      btn.disabled = false; btn.textContent = 'Entrar';
     }).withFailureHandler(function (e) {
-      try { sessionStorage.removeItem('clave'); } catch (x) {}
-      document.getElementById('loginErr').textContent = e.message;
+      actualizando(false);
+      btn.disabled = false; btn.textContent = 'Entrar';
+      if (rapido && e.message !== 'Clave incorrecta') return; // sin internet: se queda con la lista guardada
+      try { sessionStorage.removeItem('clave'); localStorage.removeItem('oficina-cache'); } catch (x) {}
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('acciones').style.display = 'none';
+      document.getElementById('login').style.display = 'block';
+      err.textContent = e.message;
     }).listarClientes(CLAVE);
   }
 
-  function cargar() { google.script.run.withSuccessHandler(recibir).withFailureHandler(function (e) { alert(e.message); }).listarClientes(CLAVE); }
+  function cargar() {
+    actualizando(true);
+    google.script.run
+      .withSuccessHandler(function (d) { recibir(d); guardarCache(d); actualizando(false); })
+      .withFailureHandler(function () { actualizando(false); })
+      .listarClientes(CLAVE);
+  }
 
   function recibir(d) {
     DATOS = d;
