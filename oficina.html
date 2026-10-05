@@ -15,6 +15,7 @@
 <script src="config.js"></script>
 <script src="api.js"></script>
 <script src="excel.js"></script>
+<script src="reglas.js"></script>
 <style>
   /* Lista a la izquierda, ficha del cliente en un panel que se desliza desde la derecha */
   :root {
@@ -44,7 +45,7 @@
   .btn:active { transform: scale(.98); }
   .btn:disabled { opacity: .55; cursor: default; }
   .btn-pri { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px rgba(40, 106, 77, .22); }
-  .btn-pri:hover { background: #1743bd; }
+  .btn-pri:hover { background: #1f553d; }
   .btn-icono { width: 44px; padding: 0; }
   .btn:focus-visible, .fila:focus-visible, .kpi:focus-visible, .seg button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   .gira { animation: gira .8s linear infinite; }
@@ -126,6 +127,35 @@
   .cliente small, .celda small { display: block; color: var(--ink-3); font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .celda { min-width: 0; }
   .alerta { color: var(--bad); font-size: 12px; font-weight: 700; }
+  /* Recomendación automática según el manual de crédito (reglas.js) */
+  .sug { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .sug.aprobar { background: var(--ok-soft); color: var(--ok); }
+  .sug.revisar { background: var(--warn-soft); color: var(--warn); }
+  .reco { overflow: hidden; }
+  .reco-cab { padding: 16px 18px; display: flex; gap: 12px; align-items: flex-start; }
+  .reco-cab .ico { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; font-weight: 800; }
+  .reco.aprobar .reco-cab { background: var(--ok-soft); } .reco.aprobar .ico { background: var(--ok); color: #fff; }
+  .reco.revisar .reco-cab { background: var(--warn-soft); } .reco.revisar .ico { background: var(--warn); color: #fff; }
+  .reco-cab b { display: block; font-size: 16px; letter-spacing: -.01em; }
+  .reco.aprobar .reco-cab b { color: var(--ok); } .reco.revisar .reco-cab b { color: var(--warn); }
+  .reco-cab small { display: block; color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+  .reco-num { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--line); }
+  .reco-num div { padding: 12px 18px; border-right: 1px solid var(--line); min-width: 0; }
+  .reco-num div:last-child { border-right: 0; }
+  .reco-num span, .reco-bloque > span { display: block; font-size: 12px; font-weight: 600; color: var(--ink-3); margin-bottom: 2px; }
+  .reco-num b { font-size: 15px; overflow-wrap: anywhere; }
+  .reco-bloque { padding: 12px 18px; border-bottom: 1px solid var(--line); }
+  .reco-bloque:last-child { border-bottom: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .chips i { font-style: normal; font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); }
+  .chips.no i { background: var(--bad-soft); color: var(--bad); }
+  .reco-lista { margin: 4px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); }
+  .reco-lista li + li { margin-top: 3px; }
+  .reco-lista.ojo { color: var(--warn); font-weight: 600; }
+  .reco-pie { padding: 12px 18px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .reco-pie .btn { height: 40px; }
+  .reco-pie small { color: var(--ink-3); font-size: 12px; }
+  @media (max-width: 520px) { .reco-num { grid-template-columns: 1fr 1fr; } .reco-num div:nth-child(2) { border-right: 0; } .reco-num div:last-child { grid-column: 1 / -1; border-top: 1px solid var(--line); } }
   .pill { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
   .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .pill.Pendiente { background: var(--warn-soft); color: var(--warn); }
@@ -443,6 +473,27 @@
   function enLinea() { return DATOS.filter(function (x) { return !FILTRO.linea || lineaDe(x) === FILTRO.linea; }); }
   function buscarFila(f) { return DATOS.filter(function (r) { return r.fila === f; })[0]; }
 
+  function chipSugerencia(x) {
+    var s = recomendar(x, lineaDe(x));
+    return '<div><span class="sug ' + s.accion + '">' + (s.accion === 'aprobar' ? '✓ Sugerido: aprobar · ' + esc(s.corto) : '⚠ ' + esc(s.titulo)) + '</span></div>';
+  }
+  function tarjetaRecomendacion(x) {
+    var s = recomendar(x, lineaDe(x)), g = s.reglas;
+    var h = '<div class="tarjeta reco ' + s.accion + '"><div class="reco-cab"><div class="ico">' + (s.accion === 'aprobar' ? '✓' : '!') + '</div>' +
+      '<div><b>' + esc(s.titulo) + '</b><small>' + esc(s.motivo) + '</small></div></div>';
+    if (g) {
+      h += '<div class="reco-num"><div><span>Crédito inicial</span><b>$' + g.creditoInicial + '</b></div><div><span>Límite máximo</span><b>$' + String(g.creditoMax).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (g === REGLAS.canales.moderno ? '+' : '') + '</b></div>' +
+        '<div><span>Plazo</span><b>' + esc(g.plazo) + '</b></div></div>' +
+        '<div class="reco-bloque"><span>Canal</span><b>' + esc(g.nombre) + '</b></div>' +
+        '<div class="reco-bloque"><span>' + (g.soloEstos ? 'Solo puede comprar' : 'Puede comprar') + '</span><div class="chips">' + g.permitido.map(function (p) { return '<i>' + esc(p) + '</i>'; }).join('') + '</div></div>' +
+        '<div class="reco-bloque"><span>No vender</span><div class="chips no">' + g.excluido.map(function (p) { return '<i>' + esc(p) + '</i>'; }).join('') + '</div></div>';
+    }
+    if (s.alertas.length) h += '<div class="reco-bloque"><span>Revisar primero</span><ul class="reco-lista ojo">' + s.alertas.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>';
+    if (s.pendientes.length) h += '<div class="reco-bloque"><span>Pendientes</span><ul class="reco-lista">' + s.pendientes.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>';
+    if (g) h += '<div class="reco-bloque"><span>Al facturar cada pedido</span><ul class="reco-lista">' + REGLAS.alFacturar.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>';
+    if (g && s.accion === 'aprobar' && x['Estado'] !== 'Aprobado') h += '<div class="reco-pie"><button type="button" class="btn btn-pri" id="btnAplicar">Aprobar con esta recomendación</button><small>Marca Aprobado y anota el crédito en la nota interna. Luego toca Guardar.</small></div>';
+    return h + '</div>';
+  }
   function pintar() {
     var BASE = enLinea();
     var hoy = new Date().toDateString(), c = { total: BASE.length, Pendiente: 0, Aprobado: 0, hoy: 0 };
@@ -463,7 +514,8 @@
       var sub = [x['Tipo de cliente'], x['Persona de contacto']].filter(Boolean).join(' · ') || x['Teléfono'] || '';
       return '<div class="fila' + (ACTUAL === x.fila ? ' sel' : '') + '" tabindex="0" role="button" data-f="' + x.fila + '" style="animation-delay:' + Math.min(i, 12) * 25 + 'ms">' +
         '<div class="cliente c-cli">' + avatar(x['Nombre comercial']) + '<div style="min-width:0"><b>' + esc(x['Nombre comercial'] || 'Sin nombre') + '</b><small>' + etiquetaLinea(x) + esc(sub) + '</small>' +
-          (x['Nota oficina'] && /^OJO/.test(x['Nota oficina']) ? '<div class="alerta">' + esc(x['Nota oficina']) + '</div>' : '') + '</div></div>' +
+          (x['Nota oficina'] && /^OJO/.test(x['Nota oficina']) ? '<div class="alerta">' + esc(x['Nota oficina']) + '</div>' : '') +
+          (x['Estado'] === 'Pendiente' || !x['Estado'] ? chipSugerencia(x) : '') + '</div></div>' +
         '<div class="celda c-ven"><b>' + esc(x['Vendedor']) + '</b></div>' +
         '<div class="celda c-zona"><small>' + esc(x['Zona / Ciudad'] || '—') + '</small></div>' +
         '<div class="celda c-fec"><small>' + esc(x['Fecha']) + '</small></div>' +
@@ -511,6 +563,7 @@
     function dato(k, etiqueta, ancho) { return '<div class="dato' + (ancho ? ' ancho' : '') + '"><span>' + (etiqueta || k) + '</span><b>' + (esc(x[k]) || '—') + '</b></div>'; }
     var tel = String(x['Teléfono'] || '').replace(/[^\d+]/g, '');
     $('fCuerpo').innerHTML =
+      '<div class="seccion">Qué hacer con este cliente</div>' + tarjetaRecomendacion(x) +
       '<div class="seccion">Fotos</div><div class="fotos">' + foto('imgRif', 'RIF', x['Foto RIF']) + foto('imgLocal', 'Local', x['Foto local']) + '</div>' +
       '<div class="seccion">Cliente</div><div class="tarjeta datos">' +
         dato('Tipo de cliente') + dato('Interés') + dato('Persona de contacto', 'Contacto') +
@@ -534,6 +587,14 @@
     });
     $('ficha').hidden = false; document.body.style.overflow = 'hidden'; $('fCuerpo').scrollTop = 0;
     document.querySelectorAll('.fila').forEach(function (r) { r.classList.toggle('sel', +r.dataset.f === fila); });
+    if ($('btnAplicar')) $('btnAplicar').onclick = function () {
+      var s = recomendar(x, lineaDe(x));
+      ESTADO_SEL = 'Aprobado';
+      document.querySelectorAll('.estados button').forEach(function (o) { o.classList.toggle('activo', o.dataset.e === 'Aprobado'); });
+      var n = $('nota'); if (n.value.indexOf(s.nota) < 0) n.value = [s.nota, n.value].filter(Boolean).join('\n');
+      $('btnGuardar').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); $('btnGuardar').focus();
+      toast('Listo: toca Guardar revisión');
+    };
     if (x['Foto RIF']) cargarFoto('imgRif', x['Foto RIF']);
     if ($('btnLeerRif')) $('btnLeerRif').onclick = function () { leerRif(x); };
     if (x['Foto local']) cargarFoto('imgLocal', x['Foto local']);
@@ -597,7 +658,12 @@
   $('expCerrar').onclick = $('veloExp').onclick = function () { $('exportar').hidden = true; };
   function exportar(soloNuevos) {
     var lista = aprobados(soloNuevos); if (!lista.length) return;
-    var filas = [COLS_EXP.map(function (c) { return c[1]; })].concat(lista.map(function (x) { return COLS_EXP.map(function (c) { return c[0] === 'Línea' ? lineaDe(x) : x[c[0]] || ''; }); }));
+    var CREDITO = ['Canal', 'Crédito inicial (USD)', 'Límite máximo (USD)', 'Plazo', 'Portafolio permitido', 'No vender'];
+    var filas = [COLS_EXP.map(function (c) { return c[1]; }).concat(CREDITO)].concat(lista.map(function (x) {
+      var g = recomendar(x, lineaDe(x)).reglas;
+      return COLS_EXP.map(function (c) { return c[0] === 'Línea' ? lineaDe(x) : x[c[0]] || ''; })
+        .concat(g ? [g.nombre, g.creditoInicial, g.creditoMax, g.plazo, g.permitido.join(', '), g.excluido.join(', ')] : ['Sin reglas', '', '', '', '', '']);
+    }));
     var hoy = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
     Excel.descargar(Excel.crear(filas, 'Clientes'), 'clientes-' + (FILTRO.linea === 'BIPA Ritual Sensorial' ? 'ritual-' : FILTRO.linea ? 'productos-' : '') + (soloNuevos ? 'nuevos' : 'aprobados') + '-' + hoy.getFullYear() + '-' + p(hoy.getMonth() + 1) + '-' + p(hoy.getDate()) + '.xlsx');
     $('exportar').hidden = true;

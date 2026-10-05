@@ -2,8 +2,8 @@
 // aunque la app esté cerrada (Android). Siempre intenta traer la versión más nueva de internet.
 importScripts('config.js', 'cola.js');
 
-var CACHE = 'registro-clientes-v11';
-var BASICOS = ['./', 'index.html', 'oficina.html', 'config.js', 'api.js', 'cola.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'logo-bipa.png', 'logo-bipa-completo.png', 'logo-ritual.png', 'logo-bipa-blanco.png'];
+var CACHE = 'registro-clientes-v12';
+var BASICOS = ['./', 'index.html', 'oficina.html', 'config.js', 'api.js', 'cola.js', 'excel.js', 'reglas.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'logo-bipa.png', 'logo-bipa-completo.png', 'logo-ritual.png', 'logo-bipa-blanco.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(BASICOS); }).catch(function () {}));
