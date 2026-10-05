@@ -104,15 +104,15 @@
   .campo:focus-within::after { transform: scaleX(1); }
   .campo.error::after { background: var(--bad); transform: scaleX(1); }
   .req { color: var(--accent); }
-  /* Tipo de cliente: opciones según la línea */
-  .campo-opciones { padding: 14px 0 12px; border-bottom: 1px solid var(--line); }
-  .opc-tit { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 10px; }
-  .opciones { display: flex; flex-wrap: wrap; gap: 8px; }
-  .opciones button { min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-2);
-                     font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; transition: all .15s; }
-  .opciones button.sel { border-color: var(--accent); background: var(--accent); color: #fff; }
-  .campo-opciones.error .opciones button:not(.sel) { border-color: var(--bad); }
-  .campo-opciones #campoOtro { margin-top: 6px; border-bottom: 0; }
+  /* Listas desplegables (tipo de cliente e interés) */
+  .campo.lista select { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font: 500 17px/1.3 var(--font);
+                        padding: 28px 32px 10px 0; -webkit-appearance: none; appearance: none; cursor: pointer; }
+  .campo.lista select.vacio { color: var(--ink-3); }
+  .campo.lista select option { color: var(--ink); }
+  .campo.lista label { top: 9px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+  .campo.lista select:focus + label { color: var(--accent); }
+  .campo.lista::before { content: ""; position: absolute; right: 6px; top: 50%; margin-top: 2px; width: 9px; height: 9px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3);
+                         transform: translateY(-50%) rotate(45deg); pointer-events: none; }
   .ayuda-error { color: var(--bad); font-size: 13px; font-weight: 600; margin: 10px 4px 0; }
 
   /* Fotos */
@@ -300,13 +300,12 @@
       </div>
       <div class="etiqueta-seccion">Negocio</div>
       <div class="tarjeta">
-        <div class="campo-opciones" id="tipoCampo">
-          <span class="opc-tit" id="tipoTit">Tipo de cliente <span class="req">*</span></span>
-          <div class="opciones" id="opcTipo" role="radiogroup" aria-labelledby="tipoTit"></div>
-          <div class="campo" id="campoOtro" hidden><input id="c-tipoOtro" placeholder=" " autocapitalize="sentences" enterkeyhint="next"><label for="c-tipoOtro">¿Qué tipo de cliente es? <span class="req">*</span></label></div>
-          <input type="hidden" name="tipoCliente" id="c-tipo">
-        </div>
-        <div class="campo"><textarea id="c-interes" name="interes" placeholder=" " rows="2" autocapitalize="sentences"></textarea><label for="c-interes">Interés <span class="req">*</span></label></div>
+        <div class="campo lista" id="tipoCampo"><select id="sel-tipo" aria-required="true"></select><label for="sel-tipo">Tipo de cliente <span class="req">*</span></label></div>
+        <div class="campo" id="campoOtro" hidden><input id="c-tipoOtro" placeholder=" " autocapitalize="sentences" enterkeyhint="next"><label for="c-tipoOtro">¿Qué tipo de cliente es? <span class="req">*</span></label></div>
+        <input type="hidden" name="tipoCliente" id="c-tipo">
+        <div class="campo lista"><select id="c-interes" name="interes" aria-required="true">
+          <option value="">Elige el nivel de interés</option><option>Bajo</option><option>Medio</option><option>Alto</option>
+        </select><label for="c-interes">Interés <span class="req">*</span></label></div>
       </div>
       <div class="etiqueta-seccion">Dirección</div>
       <div class="tarjeta">
@@ -485,22 +484,23 @@
     var lista = tiposDe(LINEA).concat(['Otros']), v = $('c-tipo').value, sel = v;
     if (/^Otros: /.test(v)) { sel = 'Otros'; $('c-tipoOtro').value = v.slice(7); }
     else if (v && lista.indexOf(v) < 0) { sel = ''; $('c-tipo').value = ''; } // era de la otra línea
-    $('opcTipo').innerHTML = lista.map(function (t) {
-      return '<button type="button" role="radio" aria-checked="' + (t === sel) + '" class="' + (t === sel ? 'sel' : '') + '" data-t="' + esc(t) + '">' + esc(t) + '</button>';
+    $('sel-tipo').innerHTML = '<option value="">Elige el tipo de cliente</option>' + lista.map(function (t) {
+      return '<option value="' + esc(t) + '">' + esc(t) + '</option>';
     }).join('');
+    $('sel-tipo').value = sel;
     $('campoOtro').hidden = sel !== 'Otros';
-    $('opcTipo').querySelectorAll('button').forEach(function (b) {
-      b.onclick = function () {
-        var t = b.dataset.t;
-        $('opcTipo').querySelectorAll('button').forEach(function (o) { o.classList.toggle('sel', o === b); o.setAttribute('aria-checked', o === b); });
-        $('tipoCampo').classList.remove('error'); $('err0').hidden = true;
-        $('campoOtro').hidden = t !== 'Otros';
-        if (t === 'Otros') { $('c-tipo').value = 'Otros: ' + $('c-tipoOtro').value.trim(); $('c-tipoOtro').focus(); }
-        else $('c-tipo').value = t;
-        $('c-tipo').dispatchEvent(new Event('input', { bubbles: true }));
-      };
-    });
+    marcarVacios();
   }
+  $('sel-tipo').addEventListener('change', function () {
+    var t = this.value;
+    $('campoOtro').hidden = t !== 'Otros';
+    $('c-tipo').value = t === 'Otros' ? 'Otros: ' + $('c-tipoOtro').value.trim() : t;
+    if (t === 'Otros') $('c-tipoOtro').focus();
+    $('c-tipo').dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  // Texto gris mientras la lista no tenga nada elegido
+  function marcarVacios() { document.querySelectorAll('.campo.lista select').forEach(function (s) { s.classList.toggle('vacio', !s.value); }); }
+  document.querySelectorAll('.campo.lista select').forEach(function (s) { s.addEventListener('change', marcarVacios); });
   $('c-tipoOtro').addEventListener('input', function () { $('c-tipo').value = 'Otros: ' + this.value.trim(); $('c-tipo').dispatchEvent(new Event('input', { bubbles: true })); });
 
   function elegirLinea() { $('elegir').hidden = false; }
@@ -556,9 +556,9 @@
       if (el.telefono.value.replace(/\D/g, '').length < 10) return errorPaso(0, 'Escribe un teléfono completo, con código de área (ej. 0414 123 4567).', el.telefono);
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(el.correo.value.trim())) return errorPaso(0, 'Escribe un correo válido (ej. nombre@gmail.com).', el.correo);
       var tipo = $('c-tipo').value.trim();
-      if (!tipo) { $('tipoCampo').classList.add('error'); $('tipoCampo').scrollIntoView({ block: 'center', behavior: 'smooth' }); return errorPaso(0, 'Elige el tipo de cliente.'); }
+      if (!tipo) return errorPaso(0, 'Elige el tipo de cliente.', $('sel-tipo'));
       if (tipo === 'Otros:') return errorPaso(0, 'Escribe qué tipo de cliente es.', $('c-tipoOtro'));
-      if (vacio('interes')) return errorPaso(0, 'Escribe el interés del cliente.', el.interes);
+      if (vacio('interes')) return errorPaso(0, 'Elige el nivel de interés del cliente.', el.interes);
       if (vacio('zona')) return errorPaso(0, 'Escribe la zona o ciudad.', el.zona);
       if (vacio('direccion')) return errorPaso(0, 'Escribe la dirección y un punto de referencia.', el.direccion);
     }
