@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <script src="config.js"></script>
 <script src="api.js"></script>
+<script src="excel.js"></script>
 <style>
   /* Lista a la izquierda, ficha del cliente en un panel que se desliza desde la derecha */
   :root {
@@ -175,6 +176,28 @@
   .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); transform: translateX(-50%); z-index: 40; background: var(--ink); color: #fff;
            padding: 12px 18px; border-radius: 14px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow-lg); max-width: calc(100% - 32px); width: max-content; text-align: center; animation: sube .3s var(--ease); }
 
+  /* Datos fiscales leídos de la foto */
+  .fiscal-pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-3); font-weight: 500; }
+  .fiscal-pie button { border: 0; background: var(--accent-soft); color: var(--accent); font: inherit; font-weight: 700; font-size: 13px; height: 34px; padding: 0 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .fiscal-pie button:disabled { opacity: .6; cursor: default; }
+
+  .datos.dos .dato { border-bottom: 0; }
+  @media (max-width: 520px) { .datos.dos .dato:first-child { border-bottom: 1px solid var(--line); } }
+
+  /* Ventana de exportar */
+  .dialogo { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, calc(100% - 32px)); background: var(--surface); border-radius: 22px;
+             box-shadow: var(--shadow-lg); padding: 26px; z-index: 11; animation: fundido .2s ease; }
+  .dialogo h2 { margin: 0; font-size: 21px; letter-spacing: -.02em; }
+  .dialogo > p { margin: 6px 0 18px; color: var(--ink-2); font-size: 14px; }
+  .exp-opciones { display: grid; gap: 10px; }
+  .exp-op { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "n t" "n s"; column-gap: 14px; align-items: center; text-align: left; padding: 14px 16px;
+            border: 1.5px solid var(--line); border-radius: 16px; background: var(--surface); font: inherit; color: var(--ink); cursor: pointer; transition: border-color .2s, background .2s; }
+  .exp-op:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+  .exp-op:disabled { opacity: .5; cursor: default; }
+  .exp-op b { grid-area: n; font-size: 26px; font-weight: 800; min-width: 44px; height: 44px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; padding: 0 8px; }
+  .exp-op span { grid-area: t; font-weight: 700; font-size: 15px; }
+  .exp-op small { grid-area: s; color: var(--ink-3); font-size: 13px; font-weight: 500; }
+
   @media (max-width: 900px) {
     .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .lista-cab { display: none; }
@@ -229,6 +252,9 @@
         <button class="btn" id="btnActualizar" type="button" title="Actualizar">
           <svg id="icoAct" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg><span class="txt">Actualizar</span>
         </button>
+        <button class="btn" id="btnExportar" type="button" title="Exportar a Excel">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 19h14"/></svg><span class="txt">Exportar</span>
+        </button>
         <button class="btn" id="btnHoja" type="button" title="Abrir en Google Sheets">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M4 9h16M4 15h16M10 9v12"/></svg><span class="txt">Google Sheets</span>
         </button>
@@ -282,6 +308,20 @@
       <button class="btn btn-pri" id="btnGuardar" type="button">Guardar revisión</button>
     </div>
   </aside>
+</div>
+
+<!-- Exportar al sistema administrativo -->
+<div id="exportar" hidden>
+  <div class="velo" id="veloExp"></div>
+  <div class="dialogo" role="dialog" aria-labelledby="expTit">
+    <h2 id="expTit">Exportar clientes aprobados</h2>
+    <p>Archivo de Excel listo para importar en tu sistema administrativo (Profit, Saint u otro).</p>
+    <div class="exp-opciones">
+      <button class="exp-op" id="expNuevos" type="button"><b id="expNuevosN">0</b><span>Nuevos</span><small>Aprobados que aún no se han exportado. Quedan marcados como exportados.</small></button>
+      <button class="exp-op" id="expTodos" type="button"><b id="expTodosN">0</b><span>Todos los aprobados</span><small>Incluye los que ya se exportaron antes.</small></button>
+    </div>
+    <button class="btn" id="expCerrar" type="button" style="width:100%;margin-top:14px">Cancelar</button>
+  </div>
 </div>
 
 <div class="visor" id="visor" hidden><img id="visorImg" alt="Foto ampliada"></div>
@@ -441,8 +481,11 @@
         dato('Tipo de cliente') + dato('Interés') + dato('Persona de contacto', 'Contacto') +
         '<div class="dato"><span>Teléfono</span><b>' + (tel ? '<a href="tel:' + esc(tel) + '">' + esc(x['Teléfono']) + '</a>' : '—') + '</b></div>' +
         dato('Correo') + dato('Zona / Ciudad', 'Zona') + dato('Dirección', null, true) + dato('Observaciones', null, true) +
-        dato('RIF') + dato('Razón social') +
       '</div>' +
+      '<div class="seccion">Datos fiscales</div><div class="tarjeta"><div class="datos dos">' +
+        dato('RIF') + dato('Razón social') +
+      '</div>' + (x['Foto RIF'] ? '<div class="fiscal-pie"><span id="fiscalTxt">' + (x['RIF'] ? 'Leído de la foto del RIF' : 'Aún no se ha leído de la foto') + '</span>' +
+        '<button type="button" id="btnLeerRif">' + (x['RIF'] ? 'Volver a leer' : 'Leer de la foto') + '</button></div>' : '') + '</div>' +
       '<div class="seccion">Ubicación</div><div class="tarjeta">' +
         (mm ? '<div class="mapa"><iframe loading="lazy" title="Mapa" src="https://maps.google.com/maps?q=' + mm[1] + ',' + mm[2] + '&z=17&output=embed"></iframe></div>' : '') +
         '<div class="mapa-pie"><span>' + (x['Precisión GPS (m)'] ? 'Precisión ±' + esc(x['Precisión GPS (m)']) + ' m' : (x['Google Maps'] ? 'Enlace de Google Maps' : 'Sin ubicación')) + '</span>' +
@@ -457,6 +500,7 @@
     $('ficha').hidden = false; document.body.style.overflow = 'hidden'; $('fCuerpo').scrollTop = 0;
     document.querySelectorAll('.fila').forEach(function (r) { r.classList.toggle('sel', +r.dataset.f === fila); });
     if (x['Foto RIF']) cargarFoto('imgRif', x['Foto RIF']);
+    if ($('btnLeerRif')) $('btnLeerRif').onclick = function () { leerRif(x); };
     if (x['Foto local']) cargarFoto('imgLocal', x['Foto local']);
   }
   function cerrar() {
@@ -464,7 +508,7 @@
     document.querySelectorAll('.fila.sel').forEach(function (r) { r.classList.remove('sel'); });
   }
   $('btnCerrar').onclick = cerrar; $('velo').onclick = cerrar;
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if (!$('visor').hidden) $('visor').hidden = true; else if (!$('ficha').hidden) cerrar(); } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { if (!$('visor').hidden) $('visor').hidden = true; else if (!$('exportar').hidden) $('exportar').hidden = true; else if (!$('ficha').hidden) cerrar(); } });
 
   var FOTOS = {};
   function cargarFoto(id, url) {
@@ -485,6 +529,56 @@
       .verFoto(CLAVE, url);
   }
   $('visor').onclick = function () { $('visor').hidden = true; };
+
+  /* ---------- Leer RIF de la foto ---------- */
+  function leerRif(x) {
+    var b = $('btnLeerRif'); b.disabled = true; b.textContent = 'Leyendo…'; $('fiscalTxt').textContent = 'Leyendo la foto, unos segundos…';
+    google.script.run
+      .withSuccessHandler(function (r) {
+        x['RIF'] = r.rif || x['RIF']; x['Razón social'] = r.razon || x['Razón social'];
+        if (ACTUAL === x.fila) { var y = $('fCuerpo').scrollTop; abrir(x.fila); $('fCuerpo').scrollTop = y; }
+        toast(r.rif ? 'RIF leído: ' + r.rif : 'No se encontró un RIF en la foto');
+      })
+      .withFailureHandler(function (e) {
+        if (!$('btnLeerRif')) return;
+        $('btnLeerRif').disabled = false; $('btnLeerRif').textContent = 'Reintentar';
+        $('fiscalTxt').textContent = /Acción no válida/.test(e.message) ? 'Falta actualizar el código en Apps Script' : 'No se pudo leer: ' + e.message;
+      })
+      .leerRif(CLAVE, x.fila);
+  }
+
+  /* ---------- Exportar a Excel ---------- */
+  var COLS_EXP = [['ID', 'Código'], ['RIF', 'RIF'], ['Razón social', 'Razón social'], ['Nombre comercial', 'Nombre comercial'], ['Persona de contacto', 'Persona de contacto'],
+    ['Teléfono', 'Teléfono'], ['Correo', 'Correo'], ['Dirección', 'Dirección'], ['Zona / Ciudad', 'Zona / Ciudad'], ['Tipo de cliente', 'Tipo de cliente'], ['Interés', 'Interés'],
+    ['Vendedor', 'Vendedor'], ['Fecha', 'Fecha de registro'], ['Latitud', 'Latitud'], ['Longitud', 'Longitud'], ['Google Maps', 'Google Maps'], ['Observaciones', 'Observaciones'], ['Nota oficina', 'Nota oficina']];
+  function aprobados(soloNuevos) { return DATOS.filter(function (x) { return x['Estado'] === 'Aprobado' && (!soloNuevos || !x['Exportado']); }).reverse(); }
+  $('btnExportar').onclick = function () {
+    var n = aprobados(true).length, t = aprobados(false).length;
+    $('expNuevosN').textContent = n; $('expTodosN').textContent = t;
+    $('expNuevos').disabled = !n; $('expTodos').disabled = !t;
+    $('exportar').hidden = false;
+  };
+  $('expCerrar').onclick = $('veloExp').onclick = function () { $('exportar').hidden = true; };
+  function exportar(soloNuevos) {
+    var lista = aprobados(soloNuevos); if (!lista.length) return;
+    var filas = [COLS_EXP.map(function (c) { return c[1]; })].concat(lista.map(function (x) { return COLS_EXP.map(function (c) { return x[c[0]] || ''; }); }));
+    var hoy = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+    Excel.descargar(Excel.crear(filas, 'Clientes'), 'clientes-' + (soloNuevos ? 'nuevos' : 'aprobados') + '-' + hoy.getFullYear() + '-' + p(hoy.getMonth() + 1) + '-' + p(hoy.getDate()) + '.xlsx');
+    $('exportar').hidden = true;
+    if (!soloNuevos) { toast('Descargado: ' + lista.length + ' clientes'); return; }
+    var nums = lista.map(function (x) { return x.fila; });
+    var marca = new Date().toISOString();
+    lista.forEach(function (x) { x['Exportado'] = marca; });
+    google.script.run
+      .withSuccessHandler(function () { toast('Descargado y marcado: ' + lista.length + ' clientes'); cargar(true); })
+      .withFailureHandler(function (e) {
+        lista.forEach(function (x) { x['Exportado'] = ''; });
+        toast(/Acción no válida/.test(e.message) ? 'Descargado. Para marcarlos como exportados falta actualizar el código en Apps Script.' : 'Descargado, pero no se pudo marcar: ' + e.message);
+      })
+      .marcarExportados(CLAVE, nums);
+  }
+  $('expNuevos').onclick = function () { exportar(true); };
+  $('expTodos').onclick = function () { exportar(false); };
 
   $('btnGuardar').onclick = function () {
     var fila = ACTUAL, e = ESTADO_SEL, nota = $('nota').value, btn = this;

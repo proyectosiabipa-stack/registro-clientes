@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <script src="config.js"></script>
 <script src="api.js"></script>
+<script src="cola.js"></script>
 <style>
   /* Una tarjeta por paso, barra de acción fija abajo al alcance del pulgar */
   :root {
@@ -197,6 +198,15 @@
   .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 96px); transform: translateX(-50%); z-index: 40; background: var(--ink); color: var(--bg);
            padding: 12px 18px; border-radius: 14px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); max-width: calc(100% - 32px); animation: sube .3s var(--ease); }
 
+  /* Registros guardados en el teléfono esperando señal */
+  .pendientes { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 16px; padding: 12px 14px; border: 0; border-radius: 14px;
+                background: var(--warn-soft); color: var(--warn); font: inherit; font-weight: 700; font-size: 14px; text-align: left; cursor: pointer; }
+  .pendientes .pt { width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex-shrink: 0; animation: late 1.6s ease-in-out infinite; }
+  .pendientes small { margin-left: auto; font-size: 13px; font-weight: 600; opacity: .85; white-space: nowrap; }
+  .pendientes.ok { background: var(--ok-soft); color: var(--ok); }
+  .pendientes.ok .pt { animation: none; }
+  @keyframes late { 50% { opacity: .3; } }
+  #exito.en-cola .check { background: var(--warn-soft); color: var(--warn); }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .check path { stroke-dashoffset: 0; } }
 </style>
 </head>
@@ -212,6 +222,8 @@
       <button class="chip" id="chipVendedor" type="button" aria-label="Cambiar vendedor"><span class="ini" id="iniVendedor">?</span><span id="nomVendedor">Tu nombre</span></button>
     </div>
   </header>
+
+  <button class="pendientes" id="pendientes" type="button" hidden><span class="pt"></span><span id="pendTxt"></span><small id="pendAccion">Enviar ahora</small></button>
 
   <div class="titulo">
     <h1 id="tituloPaso">Nuevo cliente</h1>
@@ -333,7 +345,7 @@
 <!-- Éxito -->
 <div class="pantalla" id="exito" hidden>
   <div class="check"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-  <h2>¡Cliente registrado!</h2>
+  <h2 id="exitoTit">¡Cliente registrado!</h2>
   <p id="exitoDetalle">La oficina ya lo puede ver.</p>
   <div class="codigo"><span>Código</span><b id="exitoCodigo">—</b></div>
   <button class="btn btn-pri" id="btnOtro" type="button">Registrar otro cliente</button>
@@ -516,7 +528,7 @@
   function etapa(n) { for (var i = 1; i <= 3; i++) { var e = $('et' + i); e.className = 'etapa' + (i < n ? ' lista' : i === n ? ' activa' : ''); } }
   function enviar() {
     if (!$('vendedor').value) { pedirVendedor(); return; }
-    var d = { vendedor: $('vendedor').value };
+    var d = { vendedor: $('vendedor').value, idLocal: Cola.nuevoId() };
     CAMPOS.forEach(function (k) { d[k] = f.elements[k].value.trim(); });
     if (gps) { d.lat = gps.lat; d.lng = gps.lng; d.precision = gps.precision; }
     d.fotoRif = fotos.fotoRif; d.fotoLocal = fotos.fotoLocal;
@@ -524,27 +536,74 @@
     if (VERSION_MOTOR < 2 && (d.tipoCliente || d.interes)) {
       d.notas = [d.tipoCliente && 'Tipo: ' + d.tipoCliente, d.interes && 'Interés: ' + d.interes, d.notas].filter(Boolean).join(' · ');
     }
-    $('enviando').hidden = false; etapa(1);
-    setTimeout(function () { etapa(2); }, 500);
-    var t3 = setTimeout(function () { etapa(3); }, 2500);
-    google.script.run
-      .withSuccessHandler(function (r) {
+    var item = { idLocal: d.idLocal, datos: d, creado: Date.now() };
+    // Primero queda guardado en el teléfono; así nada se pierde si se cae la señal
+    Cola.guardar(item).then(function () { return true; }, function () { return false; }).then(function (enCola) {
+      if (enCola && navigator.onLine === false) { listo(null, true); return; }
+      $('enviando').hidden = false; etapa(1);
+      setTimeout(function () { etapa(2); }, 500);
+      var t3 = setTimeout(function () { etapa(3); }, 2500);
+      Cola.enviarUno(item).then(function (r) {
         clearTimeout(t3); etapa(4);
-        setTimeout(function () {
-          $('enviando').hidden = true; $('exito').hidden = false;
-          $('exitoCodigo').textContent = r.id;
-          $('exitoDetalle').textContent = r.duplicado ? 'Ojo: este teléfono ya estaba registrado. La oficina lo revisará.' : 'La oficina ya lo puede ver.';
-          if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
-          try { localStorage.removeItem('borrador'); } catch (e) {}
-        }, 350);
-      })
-      .withFailureHandler(function (e) {
+        if (enCola) Cola.quitar(item.idLocal).catch(function () {});
+        setTimeout(function () { $('enviando').hidden = true; listo(r, false); }, 350);
+      }, function (e) {
         clearTimeout(t3);
         $('enviando').hidden = true;
-        errorPaso(2, 'No se pudo enviar: ' + e.message + '. Revisa la señal y toca Enviar otra vez. No se perdió nada.');
-      })
-      .registrarCliente(d);
+        if (e.red && enCola) { listo(null, true); return; }
+        if (enCola) Cola.quitar(item.idLocal).catch(function () {});
+        errorPaso(2, 'No se pudo enviar: ' + e.message + '. Toca Enviar otra vez. No se perdió nada.');
+      });
+    });
   }
+
+  function listo(r, enCola) {
+    $('exito').hidden = false; $('exito').classList.toggle('en-cola', enCola);
+    $('exitoTit').textContent = enCola ? 'Guardado en el teléfono' : '¡Cliente registrado!';
+    $('exitoCodigo').textContent = enCola ? 'Por enviar' : r.id;
+    $('exitoDetalle').textContent = enCola ? 'No hay señal. Se enviará solo cuando vuelva la conexión, aunque cierres la app.'
+      : r.duplicado ? 'Ojo: este teléfono ya estaba registrado. La oficina lo revisará.' : 'La oficina ya lo puede ver.';
+    if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
+    try { localStorage.removeItem('borrador'); } catch (e) {}
+    if (enCola) { pedirEnvioFondo(); pintarPendientes(); }
+  }
+
+  /* ---------- Cola sin señal ---------- */
+  function pintarPendientes(textoOk) {
+    Cola.todos().then(function (l) {
+      var b = $('pendientes');
+      if (!l.length) {
+        if (textoOk) { b.className = 'pendientes ok'; $('pendTxt').textContent = textoOk; $('pendAccion').textContent = ''; b.hidden = false; setTimeout(function () { b.hidden = true; }, 5000); }
+        else b.hidden = true;
+        return;
+      }
+      b.className = 'pendientes'; b.hidden = false;
+      $('pendTxt').textContent = l.length === 1 ? '1 registro por enviar' : l.length + ' registros por enviar';
+      $('pendAccion').textContent = navigator.onLine === false ? 'Esperando señal' : 'Enviar ahora';
+    }).catch(function () {});
+  }
+  function enviarPendientes() {
+    $('pendAccion').textContent = 'Enviando…';
+    Cola.procesar().then(function (env) {
+      pintarPendientes(env.length ? (env.length === 1 ? '✓ Se envió ' + env[0].nombre : '✓ Se enviaron ' + env.length + ' registros') : '');
+    });
+  }
+  function pedirEnvioFondo() {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(function (r) { if (r.sync) return r.sync.register('enviar-cola'); }).catch(function () {});
+  }
+  $('pendientes').onclick = enviarPendientes;
+  window.addEventListener('online', enviarPendientes);
+  window.addEventListener('offline', function () { pintarPendientes(); });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) {
+    if (e.data && e.data.tipo === 'cola') {
+      var env = e.data.enviados || [];
+      pintarPendientes(env.length ? (env.length === 1 ? '✓ Se envió ' + env[0].nombre : '✓ Se enviaron ' + env.length + ' registros') : '');
+    }
+  });
+  pintarPendientes();
+  if (navigator.onLine !== false) setTimeout(enviarPendientes, 1500);
+  setInterval(function () { if (navigator.onLine !== false) Cola.todos().then(function (l) { if (l.length) enviarPendientes(); }).catch(function () {}); }, 45000);
 
   $('btnOtro').onclick = function () {
     var v = $('vendedor').value; f.reset(); $('vendedor').value = v; try { localStorage.removeItem('borrador'); } catch (e) {}
@@ -557,8 +616,8 @@
   };
 
   /* ---------- Versión del motor (para campos nuevos) ---------- */
-  var VERSION_MOTOR = 0;
-  google.script.run.withSuccessHandler(function (v) { VERSION_MOTOR = v || 0; }).withFailureHandler(function () {}).version();
+  var VERSION_MOTOR = Number(leer('versionMotor')) || 0; // la última conocida, por si no hay señal
+  google.script.run.withSuccessHandler(function (v) { VERSION_MOTOR = v || 0; guardar('versionMotor', String(VERSION_MOTOR)); }).withFailureHandler(function () {}).version();
 
   /* ---------- Instalar como app ---------- */
   var instalar = null;

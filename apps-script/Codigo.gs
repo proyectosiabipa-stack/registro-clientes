@@ -22,7 +22,8 @@ const COLUMNAS = [
   'Persona de contacto', 'Teléfono', 'Correo', 'Dirección', 'Zona / Ciudad',
   'Latitud', 'Longitud', 'Precisión GPS (m)', 'Google Maps',
   'Foto RIF', 'Foto local', 'Observaciones', 'Estado', 'Nota oficina',
-  'Tipo de cliente', 'Interés' // columnas nuevas siempre al final para no desordenar lo ya guardado
+  'Tipo de cliente', 'Interés', // columnas nuevas siempre al final
+  'Exportado'                     // para no desordenar lo ya guardado
 ];
 const ESTADOS = ['Pendiente', 'Aprobado', 'Rechazado'];
 
@@ -71,10 +72,13 @@ function doGet(e) {
 }
 
 /** Las pantallas llaman aquí. Solo se permiten estas funciones. */
-const ACCIONES = { registrarCliente, listarClientes, cambiarEstado, verFoto, urlHoja, version };
+const ACCIONES = {
+  registrarCliente, listarClientes, cambiarEstado, verFoto,
+  urlHoja, version, leerRif, marcarExportados
+};
 
 /** Las pantallas preguntan esto para saber qué campos acepta el motor. */
-function version() { return 2; }
+function version() { return 3; }
 
 function doPost(e) {
   let res;
@@ -92,39 +96,87 @@ function doPost(e) {
 // ====== VENDEDORES: registrar ======
 
 function registrarCliente(d) {
+  if (!d || !d.nombre || !d.vendedor) throw new Error('Faltan datos obligatorios.');
+  // Si el teléfono reenvía el mismo registro (se cayó la señal), no se duplica
+  const cache = CacheService.getScriptCache();
+  const llave = d.idLocal ? 'reg_' + String(d.idLocal).slice(0, 60) : '';
+  if (llave && cache.get(llave)) return JSON.parse(cache.get(llave));
+
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
+  let hoja, numFila, fila, res;
   try {
-    if (!d || !d.nombre || !d.vendedor) throw new Error('Faltan datos obligatorios.');
-    const hoja = getHoja_();
-    // Aviso de duplicado por teléfono (el RIF se lee de la foto en la oficina)
+    if (llave && cache.get(llave)) return JSON.parse(cache.get(llave));
+    hoja = getHoja_();
+    // Aviso de duplicado por teléfono
     const tel = soloDigitos_(d.telefono);
     const filas = hoja.getLastRow() > 1
-      ? hoja.getRange(2, COLUMNAS.indexOf('Teléfono') + 1, hoja.getLastRow() - 1, 1).getValues() : [];
-    const duplicado = tel.length >= 7 && filas.some(r => soloDigitos_(r[0]) === tel);
-    const nombreArchivo = String(d.nombre).replace(/[^\w áéíóúñÁÉÍÓÚÑ-]/g, '').trim().slice(0, 40);
+      ? hoja.getRange(2, COLUMNAS.indexOf('Teléfono') + 1,
+          hoja.getLastRow() - 1, 1).getValues()
+      : [];
+    const duplicado = tel.length >= 7 &&
+      filas.some(r => soloDigitos_(r[0]) === tel);
+    const nombreArchivo = String(d.nombre)
+      .replace(/[^\w áéíóúñÁÉÍÓÚÑ-]/g, '').trim().slice(0, 40);
 
-    const id = 'C' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyMMddHHmmss');
-    const carpeta = DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty('FOLDER_ID'));
-    const fotoRif = d.fotoRif ? guardarFoto_(carpeta, d.fotoRif, id + '_RIF_' + nombreArchivo) : '';
-    const fotoLocal = d.fotoLocal ? guardarFoto_(carpeta, d.fotoLocal, id + '_LOCAL_' + nombreArchivo) : '';
-    const maps = (d.lat && d.lng) ? 'https://www.google.com/maps?q=' + d.lat + ',' + d.lng : (d.mapsLink || '');
+    const zona = Session.getScriptTimeZone();
+    const id = 'C' + Utilities.formatDate(new Date(), zona, 'yyMMddHHmmss');
+    const props = PropertiesService.getScriptProperties();
+    const carpeta = DriveApp.getFolderById(props.getProperty('FOLDER_ID'));
+    const fotoRif = d.fotoRif
+      ? guardarFoto_(carpeta, d.fotoRif, id + '_RIF_' + nombreArchivo) : '';
+    const fotoLocal = d.fotoLocal
+      ? guardarFoto_(carpeta, d.fotoLocal, id + '_LOCAL_' + nombreArchivo) : '';
+    const maps = (d.lat && d.lng)
+      ? 'https://www.google.com/maps?q=' + d.lat + ',' + d.lng
+      : (d.mapsLink || '');
 
-    const fila = {
-      'ID': id, 'Fecha': new Date(), 'Vendedor': d.vendedor, 'Nombre comercial': d.nombre,
-      'Razón social': '', 'RIF': '', 'Persona de contacto': d.contacto || '',
-      'Teléfono': d.telefono ? "'" + d.telefono : '', // apóstrofo: que la hoja no quite el 0 inicial 'Correo': d.correo || '', 'Dirección': d.direccion || '',
-      'Zona / Ciudad': d.zona || '', 'Latitud': d.lat ? Number(d.lat) : '', 'Longitud': d.lng ? Number(d.lng) : '', // números: la hoja en español leía 10.49 como 1049
-      'Precisión GPS (m)': d.precision || '', 'Google Maps': maps,
-      'Foto RIF': fotoRif, 'Foto local': fotoLocal, 'Observaciones': d.notas || '', 'Tipo de cliente': d.tipoCliente || '', 'Interés': d.interes || '',
-      'Estado': 'Pendiente', 'Nota oficina': duplicado ? 'OJO: este teléfono ya estaba registrado' : ''
+    fila = {
+      'ID': id,
+      'Fecha': new Date(),
+      'Vendedor': d.vendedor,
+      'Nombre comercial': d.nombre,
+      'Razón social': '',
+      'RIF': '',
+      'Persona de contacto': d.contacto || '',
+      // apóstrofo: que la hoja no quite el 0 inicial
+      'Teléfono': d.telefono ? "'" + d.telefono : '',
+      'Correo': d.correo || '',
+      'Dirección': d.direccion || '',
+      'Zona / Ciudad': d.zona || '',
+      // números: la hoja en español leía 10.49 como 1049
+      'Latitud': d.lat ? Number(d.lat) : '',
+      'Longitud': d.lng ? Number(d.lng) : '',
+      'Precisión GPS (m)': d.precision || '',
+      'Google Maps': maps,
+      'Foto RIF': fotoRif,
+      'Foto local': fotoLocal,
+      'Observaciones': d.notas || '',
+      'Tipo de cliente': d.tipoCliente || '',
+      'Interés': d.interes || '',
+      'Estado': 'Pendiente',
+      'Nota oficina': duplicado ? 'OJO: este teléfono ya estaba registrado' : '',
+      'Exportado': ''
     };
     hoja.appendRow(COLUMNAS.map(c => fila[c]));
-    avisarPorCorreo_(fila);
-    return { ok: true, id: id, duplicado: duplicado };
+    numFila = hoja.getLastRow();
+    res = { ok: true, id: id, duplicado: duplicado };
+    if (llave) cache.put(llave, JSON.stringify(res), 21600);
   } finally {
     lock.releaseLock();
   }
+  // Lee el RIF y la razón social de la foto (fuera del candado)
+  if (fila['Foto RIF']) {
+    try {
+      const r = escribirRif_(hoja, numFila, fila['Foto RIF']);
+      fila['RIF'] = r.rif;
+      fila['Razón social'] = r.razon;
+    } catch (e) {
+      console.log('No se pudo leer el RIF: ' + e.message);
+    }
+  }
+  try { avisarPorCorreo_(fila); } catch (e) { console.log(e.message); }
+  return res;
 }
 
 function guardarFoto_(carpeta, dataUrl, nombre) {
@@ -142,7 +194,9 @@ function avisarPorCorreo_(f) {
     to: destino,
     subject: 'Cliente nuevo: ' + f['Nombre comercial'] + ' (' + f['Vendedor'] + ')',
     htmlBody: '<b>' + f['Nombre comercial'] + '</b><br>' +
-      'Vendedor: ' + f['Vendedor'] + '<br>Teléfono: ' + f['Teléfono'] + '<br>' +
+      'Vendedor: ' + f['Vendedor'] + '<br>' +
+      'Teléfono: ' + String(f['Teléfono']).replace(/^'/, '') + '<br>' +
+      (f['RIF'] ? 'RIF: ' + f['RIF'] + ' ' + (f['Razón social'] || '') + '<br>' : '') +
       (f['Google Maps'] ? '<a href="' + f['Google Maps'] + '">Ver ubicación</a><br>' : '') +
       (f['Nota oficina'] ? '<b style="color:#c00">' + f['Nota oficina'] + '</b><br>' : '') +
       '<br><a href="' + url + '">Abrir portal de oficina</a>'
@@ -191,12 +245,144 @@ function verFoto(clave, url) {
   return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
 }
 
+/** Botón "Leer RIF" del portal: vuelve a leer la foto de un registro. */
+function leerRif(clave, fila) {
+  validarClave_(clave);
+  const hoja = getHoja_();
+  const url = hoja.getRange(fila, COLUMNAS.indexOf('Foto RIF') + 1).getValue();
+  if (!url) throw new Error('Este cliente no tiene foto del RIF');
+  return escribirRif_(hoja, fila, url);
+}
+
+/** El portal avisa qué filas ya se exportaron al sistema administrativo. */
+function marcarExportados(clave, filas) {
+  validarClave_(clave);
+  const hoja = getHoja_();
+  const col = COLUMNAS.indexOf('Exportado') + 1;
+  const ahora = new Date();
+  (filas || []).forEach(f => {
+    if (Number(f) >= 2) hoja.getRange(Number(f), col).setValue(ahora);
+  });
+  return true;
+}
+
 function urlHoja(clave) {
   validarClave_(clave);
   return SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID')).getUrl();
 }
 
+// ====== Lectura automática del RIF (OCR gratis de Google Drive) ======
+
+function escribirRif_(hoja, fila, urlFoto) {
+  const r = leerRifDeFoto_(urlFoto);
+  if (r.rif) {
+    hoja.getRange(fila, COLUMNAS.indexOf('RIF') + 1).setValue(r.rif);
+  }
+  if (r.razon) {
+    hoja.getRange(fila, COLUMNAS.indexOf('Razón social') + 1)
+        .setValue(r.razon);
+  }
+  return r;
+}
+
+/** Convierte la foto en texto con Google Drive y busca el RIF. */
+function leerRifDeFoto_(urlFoto) {
+  const id = idDrive_(urlFoto);
+  const api = 'https://www.googleapis.com/drive/v3/files/';
+  const cab = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+  const copia = UrlFetchApp.fetch(api + id + '/copy?ocrLanguage=es', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: cab,
+    muteHttpExceptions: true,
+    payload: JSON.stringify({
+      name: 'lectura-rif-temporal',
+      mimeType: 'application/vnd.google-apps.document'
+    })
+  });
+  if (copia.getResponseCode() !== 200) {
+    throw new Error('Drive no pudo leer la foto: ' +
+      copia.getContentText().slice(0, 150));
+  }
+  const doc = JSON.parse(copia.getContentText()).id;
+  try {
+    const texto = UrlFetchApp.fetch(
+      api + doc + '/export?mimeType=text/plain', { headers: cab }
+    ).getContentText();
+    return interpretarRif_(texto);
+  } finally {
+    UrlFetchApp.fetch(api + doc, {
+      method: 'delete', headers: cab, muteHttpExceptions: true
+    });
+  }
+}
+
+/** Busca en el texto el RIF (J-12345678-9) y la razón social. */
+function interpretarRif_(texto) {
+  const lineas = String(texto || '').split(/\r?\n/)
+    .map(l => l.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const reRif = /(^|[^A-Z0-9])([JVEGPC])\s*[-–.:]?\s*(\d{7,8})\s*[-–.]?\s*(\d)(?!\d)/i;
+  const hallados = [];
+  lineas.forEach((l, i) => {
+    const m = l.toUpperCase().match(reRif);
+    if (m) {
+      hallados.push({
+        rif: m[2] + '-' + ('0' + m[3]).slice(-8) + '-' + m[4],
+        i: i,
+        resto: l.slice(m.index + m[0].length).trim(),
+        seniat: /SENIAT/i.test(l)
+      });
+    }
+  });
+  // El RIF del SENIAT (G-20000303-0) suele salir impreso; se prefiere otro
+  const h = hallados.filter(x => !x.seniat && x.rif !== 'G-20000303-0')[0] ||
+    hallados[0];
+  const out = { rif: h ? h.rif : '', razon: '' };
+
+  const etiqueta = new RegExp('^(R\\.?I\\.?F|REGISTRO|SENIAT|DOMICILIO|FECHA|' +
+    'N[°º.]|NRO|COMPROBANTE|REP[UÚ]BLICA|BOLIVARIANA|MINISTERIO|' +
+    'SERVICIO|NACIONAL|INTEGRADO|ADMINISTRACI|FISCAL|ZONA|TEL[EÉ]F|' +
+    'CORREO|LA CONDICI|CONDICI|CONTRIBUYENTE|ESTADO|MUNICIPIO|' +
+    'PARROQUIA|AV\\b|AVENIDA|CALLE|SECTOR|URB|EDIF|LOCAL|PISO|' +
+    'C[OÓ]DIGO|FIRMA|VENCE|VENCIMIENTO|INFORMACI|P[AÁ]GINA)', 'i');
+  const limpiar = l => l
+    .replace(/^(NOMBRE|RAZ[OÓ]N SOCIAL|DENOMINACI[OÓ]N)\s*[:.-]?\s*/i, '')
+    .replace(reRif, ' ').replace(/\s+/g, ' ').trim();
+  const pareceNombre = l => {
+    const t = limpiar(l);
+    return t.length >= 3 && !etiqueta.test(t) &&
+      (t.match(/[A-ZÁÉÍÓÚÑ]/gi) || []).length >= t.length * 0.6;
+  };
+  const sociedad = /(\bC\.?\s?A\.?$|\bS\.?\s?A\.?$|S\.?\s?R\.?\s?L|\bF\.?\s?P\.?$|COMPA[ÑN][IÍ]A AN[OÓ]NIMA|\bC\.\s?A\b)/i;
+
+  let razon = lineas.filter(l => sociedad.test(l) && pareceNombre(l))[0];
+  if (!razon && h && pareceNombre(h.resto)) razon = h.resto;
+  if (!razon && h) {
+    razon = lineas.slice(h.i + 1, h.i + 4).filter(pareceNombre)[0];
+  }
+  out.razon = razon ? limpiar(razon).slice(0, 120) : '';
+  return out;
+}
+
+/** Ejecuta esta función UNA VEZ desde el editor para dar el permiso nuevo. */
+function autorizar() {
+  DriveApp.getRootFolder();
+  UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }
+  });
+  Logger.log('Permisos listos. Ya puedes publicar la nueva versión.');
+}
+
 // ====== utilidades ======
+
+function idDrive_(url) {
+  const m = String(url).match(/\/d\/([-\w]{20,})/) ||
+    String(url).match(/[-\w]{25,}/);
+  if (!m) throw new Error('Enlace de foto no válido');
+  return m[1] || m[0];
+}
+
 
 function getHoja_() {
   let id = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
