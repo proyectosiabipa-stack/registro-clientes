@@ -103,6 +103,20 @@ function registrarCliente(d) {
   const llave = d.idLocal ? 'reg_' + String(d.idLocal).slice(0, 60) : '';
   if (llave && cache.get(llave)) return JSON.parse(cache.get(llave));
 
+  // Las fotos se suben antes del candado: así varios vendedores enviando a la vez no se hacen esperar.
+  // El código lleva 3 letras al azar para que dos registros del mismo segundo nunca se repitan.
+  const nombreArchivo = String(d.nombre)
+    .replace(/[^\w áéíóúñÁÉÍÓÚÑ-]/g, '').trim().slice(0, 40);
+  const zona = Session.getScriptTimeZone();
+  const id = 'C' + Utilities.formatDate(new Date(), zona, 'yyMMddHHmmss') +
+    Utilities.getUuid().replace(/[^A-Z0-9]/gi, '').slice(0, 3).toUpperCase();
+  const props = PropertiesService.getScriptProperties();
+  const carpeta = DriveApp.getFolderById(props.getProperty('FOLDER_ID'));
+  const fotoRif = d.fotoRif
+    ? guardarFoto_(carpeta, d.fotoRif, id + '_RIF_' + nombreArchivo) : '';
+  const fotoLocal = d.fotoLocal
+    ? guardarFoto_(carpeta, d.fotoLocal, id + '_LOCAL_' + nombreArchivo) : '';
+
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   let hoja, numFila, fila, res;
@@ -120,17 +134,6 @@ function registrarCliente(d) {
     const cLin = COLUMNAS.indexOf('Línea');
     const duplicado = tel.length >= 7 && filas.some(r =>
       soloDigitos_(r[cTel]) === tel && (r[cLin] || LINEAS[0]) === linea);
-    const nombreArchivo = String(d.nombre)
-      .replace(/[^\w áéíóúñÁÉÍÓÚÑ-]/g, '').trim().slice(0, 40);
-
-    const zona = Session.getScriptTimeZone();
-    const id = 'C' + Utilities.formatDate(new Date(), zona, 'yyMMddHHmmss');
-    const props = PropertiesService.getScriptProperties();
-    const carpeta = DriveApp.getFolderById(props.getProperty('FOLDER_ID'));
-    const fotoRif = d.fotoRif
-      ? guardarFoto_(carpeta, d.fotoRif, id + '_RIF_' + nombreArchivo) : '';
-    const fotoLocal = d.fotoLocal
-      ? guardarFoto_(carpeta, d.fotoLocal, id + '_LOCAL_' + nombreArchivo) : '';
     const maps = (d.lat && d.lng)
       ? 'https://www.google.com/maps?q=' + d.lat + ',' + d.lng
       : (d.mapsLink || '');
