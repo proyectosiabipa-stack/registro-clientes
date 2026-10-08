@@ -3,8 +3,8 @@ var CONFIG = {
   // Enlace del "motor" en Google Apps Script (termina en /exec)
   API_URL: 'https://script.google.com/macros/s/AKfycbyZEV4xRy5xiB1OGFfOurDlS4Admh0pNZ52hOnBGcxl2uBNp4q_h0Cg_3HBuZi3PVe5sQ/exec',
   NOMBRE_EMPRESA: 'Productos BIPA',
-  // Nombres sugeridos en el formulario, ej: ['Pedro', 'María']. Vacío = el vendedor escribe su nombre.
-  VENDEDORES: [],
+  // Lista fija: el vendedor toca su nombre (no lo escribe). Vacío = el vendedor escribe su nombre.
+  VENDEDORES: ['Octavio', 'Maria', 'Yhon', 'Hermes', 'Darwuin', 'Numar', 'Rafael', 'Hendrick', 'Karen', 'Juan', 'Edrick', 'Admin'],
   // true = al abrir la app el vendedor elige siempre la línea (Ritual Sensorial o Productos)
   ELEGIR_LINEA_SIEMPRE: true
 };

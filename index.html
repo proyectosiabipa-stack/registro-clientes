@@ -178,6 +178,9 @@
   .btn:disabled { opacity: .55; }
 
   /* Hoja inferior (nombre del vendedor) */
+  .nombres { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; max-height: 50vh; overflow-y: auto; }
+  .nombres button { min-height: 52px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--surface); font: inherit; font-size: 15px; font-weight: 600; color: inherit; cursor: pointer; padding: 6px; }
+  .nombres button.activo { border-color: var(--accent); background: var(--accent-soft, #e7f1eb); color: var(--accent); }
   .velo { position: fixed; inset: 0; background: rgba(10, 14, 20, .45); z-index: 20; display: flex; align-items: flex-end; justify-content: center; animation: aparece .25s ease; }
   .hoja { width: 100%; max-width: 560px; background: var(--surface); border-radius: 24px 24px 0 0; padding: 10px 20px calc(env(safe-area-inset-bottom, 0px) + 20px); animation: sube .35s var(--ease); }
   .hoja .asa { width: 40px; height: 5px; border-radius: 5px; background: var(--line); margin: 0 auto 18px; }
@@ -401,8 +404,9 @@
   <div class="hoja" role="dialog" aria-labelledby="hojaTit">
     <div class="asa"></div>
     <h2 id="hojaTit">¿Quién registra?</h2>
-    <p>Se guarda en este teléfono. Solo lo escribes una vez.</p>
-    <div class="campo" style="border-bottom:1px solid var(--line)"><input id="inVendedor" list="listaVendedores" placeholder=" " autocapitalize="words" enterkeyhint="done"><label for="inVendedor">Tu nombre</label></div>
+    <p id="hojaTxt">Se guarda en este teléfono. Solo lo escribes una vez.</p>
+    <div class="nombres" id="nombres" hidden></div>
+    <div class="campo" id="campoVendedor" style="border-bottom:1px solid var(--line)"><input id="inVendedor" list="listaVendedores" placeholder=" " autocapitalize="words" enterkeyhint="done"><label for="inVendedor">Tu nombre</label></div>
     <datalist id="listaVendedores"></datalist>
     <button class="btn btn-pri" id="btnGuardarVendedor" type="button" style="width:100%;margin-top:20px">Listo</button>
   </div>
@@ -455,7 +459,22 @@
     $('nomVendedor').textContent = v ? v.trim().split(/\s+/)[0] : 'Tu nombre';
     $('iniVendedor').textContent = v ? v.trim().split(/\s+/).map(function (p) { return p[0]; }).slice(0, 2).join('').toUpperCase() : '?';
   }
-  function pedirVendedor() { $('velo').hidden = false; $('inVendedor').value = $('vendedor').value; setTimeout(function () { $('inVendedor').focus(); }, 250); }
+  // Con lista fija el vendedor toca su nombre: así nadie aparece escrito de dos formas en el panel
+  var LISTA_V = (CONFIG.VENDEDORES || []).filter(Boolean);
+  function deLista(v) { var n = String(v || '').trim().toLowerCase(); return LISTA_V.filter(function (x) { return x.toLowerCase() === n; })[0] || ''; }
+  if (LISTA_V.length) {
+    $('nombres').hidden = false; $('campoVendedor').hidden = true; $('btnGuardarVendedor').hidden = true;
+    $('hojaTxt').textContent = 'Toca tu nombre. Se guarda en este teléfono.';
+    $('nombres').innerHTML = LISTA_V.map(function (n) { return '<button type="button" data-n="' + esc(n) + '">' + esc(n) + '</button>'; }).join('');
+    $('nombres').querySelectorAll('button').forEach(function (b) {
+      b.onclick = function () { $('inVendedor').value = b.dataset.n; $('btnGuardarVendedor').click(); };
+    });
+  }
+  function pedirVendedor() {
+    $('velo').hidden = false; $('inVendedor').value = $('vendedor').value;
+    if (LISTA_V.length) $('nombres').querySelectorAll('button').forEach(function (b) { b.classList.toggle('activo', b.dataset.n === $('vendedor').value); });
+    else setTimeout(function () { $('inVendedor').focus(); }, 250);
+  }
   $('chipVendedor').onclick = pedirVendedor;
   $('btnGuardarVendedor').onclick = function () {
     var v = $('inVendedor').value.trim();
@@ -464,6 +483,8 @@
   };
   $('inVendedor').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('btnGuardarVendedor').click(); });
   $('vendedor').value = leer('vendedor') || '';
+  // Si el nombre guardado no está en la lista (ej. "maria " escrito a mano antes), se toma el de la lista o se vuelve a pedir
+  if (LISTA_V.length && $('vendedor').value) { $('vendedor').value = deLista($('vendedor').value); guardar('vendedor', $('vendedor').value); }
   pintarVendedor();
 
   /* ---------- Línea: BIPA Ritual Sensorial o BIPA Productos ---------- */
