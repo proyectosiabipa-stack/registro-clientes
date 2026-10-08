@@ -127,6 +127,9 @@
   .cliente small, .celda small { display: block; color: var(--ink-3); font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .celda { min-width: 0; }
   .alerta { color: var(--bad); font-size: 12px; font-weight: 700; }
+  .btn-borrar { display: block; margin: 10px auto 0; background: none; border: 0; color: var(--bad); font-weight: 700; font-size: 14px; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+  .btn-borrar:hover { background: var(--bad-soft); }
+  .btn-borrar:disabled { opacity: .5; cursor: default; }
   /* Recomendación automática según el manual de crédito (reglas.js) */
   .sug { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
   .sug.aprobar { background: var(--ok-soft); color: var(--ok); }
@@ -359,6 +362,7 @@
     <div class="panel-cuerpo" id="fCuerpo"></div>
     <div class="panel-pie">
       <button class="btn btn-pri" id="btnGuardar" type="button">Guardar revisión</button>
+      <button class="btn-borrar" id="btnEliminar" type="button">Eliminar registro</button>
     </div>
   </aside>
 </div>
@@ -698,6 +702,23 @@
       })
       .withFailureHandler(function (err) { btn.disabled = false; btn.textContent = 'Guardar revisión'; toast('No se pudo guardar: ' + err.message); })
       .cambiarEstado(CLAVE, fila, e, nota);
+  };
+
+  $('btnEliminar').onclick = function () {
+    var x = buscarFila(ACTUAL); if (!x) return;
+    if (!confirm('¿Eliminar a "' + (x['Nombre comercial'] || 'este cliente') + '"?\n\nSe borra de la hoja y sus fotos van a la papelera de Drive. Esto no se puede deshacer desde el panel.')) return;
+    var btn = this; btn.disabled = true; btn.textContent = 'Eliminando…';
+    google.script.run
+      .withSuccessHandler(function () {
+        btn.disabled = false; btn.textContent = 'Eliminar registro';
+        DATOS = DATOS.filter(function (r) { return r !== x; });
+        cerrar(); recibir(DATOS); toast('Eliminado: ' + (x['Nombre comercial'] || 'registro')); cargar(true);
+      })
+      .withFailureHandler(function (e) {
+        btn.disabled = false; btn.textContent = 'Eliminar registro';
+        toast(/Acción no válida/.test(e.message) ? 'Para eliminar falta actualizar el código en Apps Script (Nueva versión).' : 'No se pudo eliminar: ' + e.message);
+      })
+      .eliminarCliente(CLAVE, x.fila, x['ID']);
   };
 
   try { CLAVE = sessionStorage.getItem('clave') || ''; } catch (e) {}

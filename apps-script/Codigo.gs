@@ -75,11 +75,11 @@ function doGet(e) {
 /** Las pantallas llaman aquí. Solo se permiten estas funciones. */
 const ACCIONES = {
   registrarCliente, listarClientes, cambiarEstado, verFoto,
-  urlHoja, version, leerRif, marcarExportados
+  urlHoja, version, leerRif, marcarExportados, eliminarCliente
 };
 
 /** Las pantallas preguntan esto para saber qué campos acepta el motor. */
-function version() { return 4; }
+function version() { return 5; }
 
 function doPost(e) {
   let res;
@@ -242,6 +242,34 @@ function cambiarEstado(clave, fila, estado, nota) {
   const hoja = getHoja_();
   hoja.getRange(fila, COLUMNAS.indexOf('Estado') + 1).setValue(estado);
   if (nota !== undefined) hoja.getRange(fila, COLUMNAS.indexOf('Nota oficina') + 1).setValue(nota);
+  return true;
+}
+
+/** Borra un registro de la hoja. Sus fotos van a la papelera de Drive (se pueden recuperar 30 días). */
+function eliminarCliente(clave, fila, id) {
+  validarClave_(clave);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const hoja = getHoja_();
+    fila = Number(fila);
+    // Se confirma con el código: si otra persona borró filas antes, la fila pudo moverse
+    const cId = COLUMNAS.indexOf('ID') + 1;
+    if (fila < 2 || fila > hoja.getLastRow() || String(hoja.getRange(fila, cId).getValue()) !== String(id)) {
+      const ids = hoja.getLastRow() > 1 ? hoja.getRange(2, cId, hoja.getLastRow() - 1, 1).getValues() : [];
+      const i = ids.findIndex(r => String(r[0]) === String(id));
+      if (i < 0) throw new Error('Ese registro ya no existe. Toca Actualizar.');
+      fila = i + 2;
+    }
+    const valores = hoja.getRange(fila, 1, 1, COLUMNAS.length).getValues()[0];
+    ['Foto RIF', 'Foto local'].forEach(c => {
+      const url = valores[COLUMNAS.indexOf(c)];
+      if (url) { try { DriveApp.getFileById(idDrive_(url)).setTrashed(true); } catch (e) {} }
+    });
+    hoja.deleteRow(fila);
+  } finally {
+    lock.releaseLock();
+  }
   return true;
 }
 
