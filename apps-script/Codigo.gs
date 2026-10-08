@@ -76,11 +76,11 @@ function doGet(e) {
 /** Las pantallas llaman aquí. Solo se permiten estas funciones. */
 const ACCIONES = {
   registrarCliente, listarClientes, cambiarEstado, verFoto,
-  urlHoja, version, leerRif, marcarExportados, eliminarCliente
+  urlHoja, version, leerRif, marcarExportados, eliminarCliente, aprobarVarios
 };
 
 /** Las pantallas preguntan esto para saber qué campos acepta el motor. */
-function version() { return 6; }
+function version() { return 7; }
 
 function doPost(e) {
   let res;
@@ -179,6 +179,7 @@ function registrarCliente(d) {
     };
     hoja.appendRow(COLUMNAS.map(c => fila[c]));
     numFila = hoja.getLastRow();
+    tocar_();
     res = { ok: true, id: id, duplicado: duplicado };
     if (llave) cache.put(llave, JSON.stringify(res), 21600);
   } finally {
@@ -225,8 +226,17 @@ function avisarPorCorreo_(f) {
 
 // ====== OFICINA: consultar y aprobar ======
 
-function listarClientes(clave) {
+function listarClientes(clave, versionConocida) {
   validarClave_(clave);
+  // El panel nuevo manda la versión que ya tiene: si nada cambió se responde al instante sin leer la hoja
+  const conVersion = versionConocida !== undefined;
+  const v = PropertiesService.getScriptProperties().getProperty('VERSION_DATOS') || '0';
+  if (conVersion && versionConocida && versionConocida === v) return { v: v, sinCambios: true };
+  const filas = leerTodo_();
+  return conVersion ? { v: v, filas: filas } : filas;
+}
+
+function leerTodo_() {
   const hoja = getHoja_();
   if (hoja.getLastRow() < 2) return [];
   // Una sola lectura de la hoja (es lo que más tarda)
@@ -257,6 +267,7 @@ function cambiarEstado(clave, fila, estado, nota, id) {
     fila = ubicar_(hoja, fila, id);
     hoja.getRange(fila, COLUMNAS.indexOf('Estado') + 1).setValue(estado);
     if (nota !== undefined) hoja.getRange(fila, COLUMNAS.indexOf('Nota oficina') + 1).setValue(nota);
+    tocar_();
   } finally {
     lock.releaseLock();
   }
@@ -277,6 +288,7 @@ function eliminarCliente(clave, fila, id) {
       if (url) { try { DriveApp.getFileById(idDrive_(url)).setTrashed(true); } catch (e) {} }
     });
     hoja.deleteRow(fila);
+    tocar_();
   } finally {
     lock.releaseLock();
   }
@@ -284,12 +296,59 @@ function eliminarCliente(clave, fila, id) {
 }
 
 /** Devuelve la foto en base64 para verla en el portal sin hacer pública la carpeta. */
-function verFoto(clave, url) {
+function verFoto(clave, url, tam) {
   validarClave_(clave);
-  const m = String(url).match(/\/d\/([-\w]{20,})/) || String(url).match(/[-\w]{25,}/);
-  if (!m) throw new Error('Enlace de foto no válido');
-  const blob = DriveApp.getFileById(m[1] || m[0]).getBlob();
+  const id = idDrive_(url);
+  // Miniatura: mucho más liviana que la foto completa. Se guarda 6 horas para que la próxima vez salga al instante.
+  if (tam) {
+    tam = Math.min(Math.max(Number(tam) || 640, 200), 1200);
+    const cache = CacheService.getScriptCache();
+    const llave = 'th_' + id + '_' + tam;
+    const guardada = cache.get(llave);
+    if (guardada) return guardada;
+    try {
+      const cab = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+      const info = JSON.parse(UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '?fields=thumbnailLink', { headers: cab }).getContentText());
+      if (info.thumbnailLink) {
+        const res = UrlFetchApp.fetch(info.thumbnailLink.replace(/=s\d+$/, '') + '=s' + tam, { headers: cab, muteHttpExceptions: true });
+        if (res.getResponseCode() === 200) {
+          const b = res.getBlob();
+          const txt = 'data:' + (b.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(b.getBytes());
+          if (txt.length < 95000) cache.put(llave, txt, 21600);
+          return txt;
+        }
+      }
+    } catch (e) {
+      console.log('Sin miniatura: ' + e.message);
+    }
+  }
+  const blob = DriveApp.getFileById(id).getBlob();
   return 'data:' + blob.getContentType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
+}
+
+/** Aprueba varios clientes de una vez. lista = [{fila, id, nota}] */
+function aprobarVarios(clave, lista) {
+  validarClave_(clave);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  let hechos = 0;
+  try {
+    const hoja = getHoja_();
+    if (hoja.getLastRow() < 2) return 0;
+    const ids = hoja.getRange(2, COLUMNAS.indexOf('ID') + 1, hoja.getLastRow() - 1, 1).getValues().map(r => String(r[0]));
+    const cEst = COLUMNAS.indexOf('Estado') + 1, cNota = COLUMNAS.indexOf('Nota oficina') + 1;
+    (lista || []).forEach(x => {
+      const i = ids.indexOf(String(x.id));
+      if (i < 0) return;
+      hoja.getRange(i + 2, cEst).setValue('Aprobado');
+      if (x.nota !== undefined) hoja.getRange(i + 2, cNota).setValue(x.nota);
+      hechos++;
+    });
+    tocar_();
+  } finally {
+    lock.releaseLock();
+  }
+  return hechos;
 }
 
 /** Botón "Leer RIF" del portal: vuelve a leer la foto de un registro. */
@@ -319,6 +378,7 @@ function marcarExportados(clave, filas, ids) {
     (filas || []).forEach(f => {
       if (Number(f) >= 2) hoja.getRange(Number(f), col).setValue(ahora);
     });
+    tocar_();
   } finally {
     lock.releaseLock();
   }
@@ -339,6 +399,7 @@ function escribirRif_(hoja, fila, urlFoto, id) {
   if (r.rif) {
     hoja.getRange(fila, COLUMNAS.indexOf('RIF') + 1).setValue(r.rif);
   }
+  if (r.rif || r.razon) tocar_();
   if (r.razon) {
     hoja.getRange(fila, COLUMNAS.indexOf('Razón social') + 1)
         .setValue(r.razon);
@@ -444,6 +505,11 @@ function idDrive_(url) {
   return m[1] || m[0];
 }
 
+
+/** Marca que los datos cambiaron: el panel así sabe cuándo vale la pena volver a leer la hoja. */
+function tocar_() {
+  PropertiesService.getScriptProperties().setProperty('VERSION_DATOS', String(Date.now()) + Math.floor(Math.random() * 1000));
+}
 
 /** Fila real de un registro. Se confirma con su código (ID) porque las filas se mueven al eliminar. */
 function ubicar_(hoja, fila, id) {
