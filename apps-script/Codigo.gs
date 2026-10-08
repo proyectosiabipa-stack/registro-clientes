@@ -23,7 +23,8 @@ const COLUMNAS = [
   'Latitud', 'Longitud', 'Precisión GPS (m)', 'Google Maps',
   'Foto RIF', 'Foto local', 'Observaciones', 'Estado', 'Nota oficina',
   'Tipo de cliente', 'Interés', // columnas nuevas siempre al final
-  'Exportado', 'Línea'            // para no desordenar lo ya guardado
+  'Exportado', 'Línea',           // para no desordenar lo ya guardado
+  'ID local'                      // código que pone el teléfono: evita registros repetidos
 ];
 const LINEAS = ['BIPA Productos', 'BIPA Ritual Sensorial'];
 const ESTADOS = ['Pendiente', 'Aprobado', 'Rechazado'];
@@ -79,7 +80,7 @@ const ACCIONES = {
 };
 
 /** Las pantallas preguntan esto para saber qué campos acepta el motor. */
-function version() { return 5; }
+function version() { return 6; }
 
 function doPost(e) {
   let res;
@@ -130,6 +131,15 @@ function registrarCliente(d) {
     const filas = hoja.getLastRow() > 1
       ? hoja.getRange(2, 1, hoja.getLastRow() - 1, COLUMNAS.length).getValues()
       : [];
+    // Si este mismo registro ya llegó antes (el teléfono lo reenvió), no se guarda otra vez
+    const cIdL = COLUMNAS.indexOf('ID local');
+    const previo = d.idLocal ? filas.find(r => String(r[cIdL]) === String(d.idLocal)) : null;
+    if (previo) {
+      [fotoRif, fotoLocal].forEach(u => { if (u) { try { DriveApp.getFileById(idDrive_(u)).setTrashed(true); } catch (e) {} } });
+      res = { ok: true, id: String(previo[COLUMNAS.indexOf('ID')]), duplicado: false, repetido: true };
+      if (llave) cache.put(llave, JSON.stringify(res), 21600);
+      return res;
+    }
     const cTel = COLUMNAS.indexOf('Teléfono');
     const cLin = COLUMNAS.indexOf('Línea');
     const duplicado = tel.length >= 7 && filas.some(r =>
@@ -164,7 +174,8 @@ function registrarCliente(d) {
       'Estado': 'Pendiente',
       'Nota oficina': duplicado ? 'OJO: este teléfono ya estaba registrado' : '',
       'Exportado': '',
-      'Línea': linea
+      'Línea': linea,
+      'ID local': d.idLocal ? String(d.idLocal).slice(0, 60) : ''
     };
     hoja.appendRow(COLUMNAS.map(c => fila[c]));
     numFila = hoja.getLastRow();
@@ -176,7 +187,7 @@ function registrarCliente(d) {
   // Lee el RIF y la razón social de la foto (fuera del candado)
   if (fila['Foto RIF']) {
     try {
-      const r = escribirRif_(hoja, numFila, fila['Foto RIF']);
+      const r = escribirRif_(hoja, numFila, fila['Foto RIF'], id);
       fila['RIF'] = r.rif;
       fila['Razón social'] = r.razon;
     } catch (e) {
@@ -236,12 +247,19 @@ function listarClientes(clave) {
   }).reverse();
 }
 
-function cambiarEstado(clave, fila, estado, nota) {
+function cambiarEstado(clave, fila, estado, nota, id) {
   validarClave_(clave);
   if (ESTADOS.indexOf(estado) < 0) throw new Error('Estado no válido');
-  const hoja = getHoja_();
-  hoja.getRange(fila, COLUMNAS.indexOf('Estado') + 1).setValue(estado);
-  if (nota !== undefined) hoja.getRange(fila, COLUMNAS.indexOf('Nota oficina') + 1).setValue(nota);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const hoja = getHoja_();
+    fila = ubicar_(hoja, fila, id);
+    hoja.getRange(fila, COLUMNAS.indexOf('Estado') + 1).setValue(estado);
+    if (nota !== undefined) hoja.getRange(fila, COLUMNAS.indexOf('Nota oficina') + 1).setValue(nota);
+  } finally {
+    lock.releaseLock();
+  }
   return true;
 }
 
@@ -252,15 +270,7 @@ function eliminarCliente(clave, fila, id) {
   lock.waitLock(30000);
   try {
     const hoja = getHoja_();
-    fila = Number(fila);
-    // Se confirma con el código: si otra persona borró filas antes, la fila pudo moverse
-    const cId = COLUMNAS.indexOf('ID') + 1;
-    if (fila < 2 || fila > hoja.getLastRow() || String(hoja.getRange(fila, cId).getValue()) !== String(id)) {
-      const ids = hoja.getLastRow() > 1 ? hoja.getRange(2, cId, hoja.getLastRow() - 1, 1).getValues() : [];
-      const i = ids.findIndex(r => String(r[0]) === String(id));
-      if (i < 0) throw new Error('Ese registro ya no existe. Toca Actualizar.');
-      fila = i + 2;
-    }
+    fila = ubicar_(hoja, fila, id);
     const valores = hoja.getRange(fila, 1, 1, COLUMNAS.length).getValues()[0];
     ['Foto RIF', 'Foto local'].forEach(c => {
       const url = valores[COLUMNAS.indexOf(c)];
@@ -283,23 +293,35 @@ function verFoto(clave, url) {
 }
 
 /** Botón "Leer RIF" del portal: vuelve a leer la foto de un registro. */
-function leerRif(clave, fila) {
+function leerRif(clave, fila, id) {
   validarClave_(clave);
   const hoja = getHoja_();
+  fila = ubicar_(hoja, fila, id);
   const url = hoja.getRange(fila, COLUMNAS.indexOf('Foto RIF') + 1).getValue();
   if (!url) throw new Error('Este cliente no tiene foto del RIF');
-  return escribirRif_(hoja, fila, url);
+  return escribirRif_(hoja, fila, url, id);
 }
 
 /** El portal avisa qué filas ya se exportaron al sistema administrativo. */
-function marcarExportados(clave, filas) {
+function marcarExportados(clave, filas, ids) {
   validarClave_(clave);
-  const hoja = getHoja_();
-  const col = COLUMNAS.indexOf('Exportado') + 1;
-  const ahora = new Date();
-  (filas || []).forEach(f => {
-    if (Number(f) >= 2) hoja.getRange(Number(f), col).setValue(ahora);
-  });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const hoja = getHoja_();
+    const col = COLUMNAS.indexOf('Exportado') + 1;
+    const ahora = new Date();
+    // Con los códigos se ubica la fila real aunque se hayan borrado registros mientras tanto
+    if (ids && ids.length && hoja.getLastRow() > 1) {
+      const todos = hoja.getRange(2, COLUMNAS.indexOf('ID') + 1, hoja.getLastRow() - 1, 1).getValues().map(r => String(r[0]));
+      filas = ids.map(i => todos.indexOf(String(i))).filter(i => i >= 0).map(i => i + 2);
+    }
+    (filas || []).forEach(f => {
+      if (Number(f) >= 2) hoja.getRange(Number(f), col).setValue(ahora);
+    });
+  } finally {
+    lock.releaseLock();
+  }
   return true;
 }
 
@@ -310,8 +332,10 @@ function urlHoja(clave) {
 
 // ====== Lectura automática del RIF (OCR gratis de Google Drive) ======
 
-function escribirRif_(hoja, fila, urlFoto) {
+function escribirRif_(hoja, fila, urlFoto, id) {
   const r = leerRifDeFoto_(urlFoto);
+  // La lectura tarda unos segundos: se vuelve a ubicar la fila por si alguien borró otra mientras tanto
+  if (id && (r.rif || r.razon)) fila = ubicar_(hoja, fila, id);
   if (r.rif) {
     hoja.getRange(fila, COLUMNAS.indexOf('RIF') + 1).setValue(r.rif);
   }
@@ -420,6 +444,22 @@ function idDrive_(url) {
   return m[1] || m[0];
 }
 
+
+/** Fila real de un registro. Se confirma con su código (ID) porque las filas se mueven al eliminar. */
+function ubicar_(hoja, fila, id) {
+  fila = Number(fila);
+  const ultima = hoja.getLastRow();
+  if (!id) {
+    if (fila >= 2 && fila <= ultima) return fila;
+    throw new Error('Ese registro ya no existe. Toca Actualizar.');
+  }
+  const cId = COLUMNAS.indexOf('ID') + 1;
+  if (fila >= 2 && fila <= ultima && String(hoja.getRange(fila, cId).getValue()) === String(id)) return fila;
+  const ids = ultima > 1 ? hoja.getRange(2, cId, ultima - 1, 1).getValues() : [];
+  const i = ids.findIndex(r => String(r[0]) === String(id));
+  if (i < 0) throw new Error('Ese registro ya no existe. Toca Actualizar.');
+  return i + 2;
+}
 
 function getHoja_() {
   let id = PropertiesService.getScriptProperties().getProperty('SHEET_ID');

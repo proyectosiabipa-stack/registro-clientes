@@ -116,7 +116,11 @@
   .lista { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 40px; }
   .lista-cab, .fila { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.2fr) minmax(0, 1.2fr) 130px 120px 24px; gap: 16px; align-items: center; padding: 0 20px; }
   .lista-cab { height: 44px; font-size: 12px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); }
-  .fila { min-height: 72px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .15s; animation: aparece .35s var(--ease) both; }
+  .fila { min-height: 72px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .15s; }
+  .filas.entrar .fila { animation: aparece .35s var(--ease) both; }
+  .fila.nueva { animation: resalta 2.4s ease; }
+  @keyframes resalta { 0%, 30% { background: #fdf3d6; } }
+  .filas.vieja { opacity: .55; pointer-events: none; transition: opacity .2s; }
   .fila:last-child { border-bottom: 0; }
   .fila:hover { background: #f9fafc; }
   .fila.sel { background: var(--accent-soft); }
@@ -384,6 +388,7 @@
 <div class="visor" id="visor" hidden><img id="visorImg" alt="Foto ampliada"></div>
 
 <script>
+  var GEN = 0, FIRMA = '', VISTOS = null, ANIMAR = true;
   var CLAVE = '', DATOS = [], FILTRO = { estado: '', vendedor: '', q: '', linea: '' }, ACTUAL = null, ESTADO_SEL = '', refresco = null, ULTIMA = null;
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -409,7 +414,7 @@
 
   function mostrarApp() {
     $('login').hidden = true; $('app').hidden = false;
-    if (!refresco) refresco = setInterval(function () { cargar(true); }, 60000);
+    if (!refresco) refresco = setInterval(function () { if (!document.hidden) cargar(true); }, 60000);
   }
   function actualizando(si) {
     $('btnActualizar').disabled = si;
@@ -427,13 +432,16 @@
     if (!CLAVE) { $('loginErr').textContent = 'Escribe la clave.'; return; }
     var btn = $('btnEntrar'); $('loginErr').textContent = '';
     var cache = leerCache(), h = await huella(CLAVE), rapido = !!(cache && h && cache.h === h);
-    if (rapido) { mostrarApp(); recibir(cache.d); actualizando(true); }
+    var g = ++GEN;
+    if (rapido) { mostrarApp(); recibir(cache.d); $('filas').classList.add('vieja'); actualizando(true); $('actualizado').textContent = 'Mostrando la última lista guardada · buscando lo nuevo…'; }
     else { btn.disabled = true; btn.innerHTML = '<svg class="gira" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg> Entrando'; }
     google.script.run.withSuccessHandler(function (d) {
       try { sessionStorage.setItem('clave', CLAVE); } catch (e) {}
-      ULTIMA = new Date(); mostrarApp(); recibir(d); guardarCache(d); actualizando(false);
       btn.disabled = false; btn.textContent = 'Entrar';
+      if (g !== GEN) return;
+      ULTIMA = new Date(); mostrarApp(); recibir(d); guardarCache(d); actualizando(false);
     }).withFailureHandler(function (e) {
+      $('filas').classList.remove('vieja');
       actualizando(false); btn.disabled = false; btn.textContent = 'Entrar';
       if (rapido && e.message !== 'Clave incorrecta') { toast('Sin conexión: mostrando la última lista guardada'); return; }
       try { sessionStorage.removeItem('clave'); localStorage.removeItem('oficina-cache'); } catch (x) {}
@@ -448,13 +456,22 @@
     $('app').hidden = true; $('login').hidden = false;
   };
 
+  // Cada carga lleva un número. Si mientras tanto empezó otra carga o se guardó/eliminó algo,
+  // la respuesta vieja se descarta: así nunca reaparecen registros borrados ni estados anteriores.
   function cargar(silencioso) {
+    if (!CLAVE) return;
+    var g = ++GEN;
     actualizando(true);
     google.script.run
-      .withSuccessHandler(function (d) { ULTIMA = new Date(); recibir(d); guardarCache(d); actualizando(false); })
-      .withFailureHandler(function (e) { actualizando(false); if (!silencioso) toast('No se pudo actualizar: ' + e.message); })
+      .withSuccessHandler(function (d) { if (g !== GEN) return; ULTIMA = new Date(); recibir(d); guardarCache(d); actualizando(false); })
+      .withFailureHandler(function (e) { if (g !== GEN) return; actualizando(false); if (!silencioso) toast('No se pudo actualizar: ' + e.message); })
       .listarClientes(CLAVE);
   }
+  function cambio() { GEN++; actualizando(false); } // se llama al guardar o eliminar
+  // Solo se actualiza sola si la pestaña está a la vista
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && CLAVE && !$('app').hidden && (!ULTIMA || Date.now() - ULTIMA > 30000)) cargar(true);
+  });
   $('btnActualizar').onclick = function () { cargar(false); };
   $('btnHoja').onclick = function () {
     var w = window.open('', '_blank');
@@ -463,21 +480,30 @@
   };
 
   /* ---------- Lista ---------- */
-  function recibir(d) {
+  function clave(x) { return x['ID'] || 'f' + x.fila; }
+  function recibir(d, forzar) {
+    $('filas').classList.remove('vieja');
+    var firma = JSON.stringify(d || []);
+    if (!forzar && firma === FIRMA) return; // nada cambió: no se toca la pantalla
+    FIRMA = firma;
     DATOS = d || [];
     var sel = $('filtroVendedor'), actual = sel.value;
     var vend = Array.from(new Set(enLinea().map(function (x) { return x['Vendedor']; }).filter(Boolean))).sort();
     sel.innerHTML = '<option value="">Todos los vendedores</option>' + vend.map(function (v) { return '<option>' + esc(v) + '</option>'; }).join('');
     sel.value = actual;
     pintar();
-    if (ACTUAL) { var x = buscarFila(ACTUAL); if (x) pintarCabecera(x); }
+    if (ACTUAL) {
+      var x = buscarFila(ACTUAL);
+      if (x) pintarCabecera(x); else { cerrar(); toast('Ese cliente ya no está en la lista (otra persona lo eliminó).'); }
+    }
+    VISTOS = {}; DATOS.forEach(function (x) { VISTOS[clave(x)] = 1; });
   }
   // Si el motor de Apps Script es viejo, la línea, el tipo y el interés llegan dentro de Observaciones
   function deObs(x, k) { var m = String(x['Observaciones'] || '').match(new RegExp(k + ': ([^·]+)')); return m ? m[1].trim() : ''; }
   function lineaDe(x) { return x['Línea'] || deObs(x, 'Línea') || 'BIPA Productos'; } // los registros viejos son de Productos
   function etiquetaLinea(x) { var r = lineaDe(x) === 'BIPA Ritual Sensorial'; return '<span class="tag-linea ' + (r ? 'ritual' : 'productos') + '">' + (r ? 'Ritual' : 'Productos') + '</span>'; }
   function enLinea() { return DATOS.filter(function (x) { return !FILTRO.linea || lineaDe(x) === FILTRO.linea; }); }
-  function buscarFila(f) { return DATOS.filter(function (r) { return r.fila === f; })[0]; }
+  function buscarFila(k) { return DATOS.filter(function (r) { return clave(r) === k; })[0]; }
 
   function chipSugerencia(x) {
     var s = recomendar(x, lineaDe(x));
@@ -516,9 +542,13 @@
       return (!FILTRO.estado || x['Estado'] === FILTRO.estado) && (!FILTRO.vendedor || x['Vendedor'] === FILTRO.vendedor) &&
         (!q || [x['Nombre comercial'], x['Razón social'], x['RIF'], x['Vendedor'], x['Zona / Ciudad'], x['Persona de contacto'], x['Teléfono'], x['Tipo de cliente'], x['Interés'], lineaDe(x)].join(' ').toLowerCase().indexOf(q) >= 0);
     });
-    $('filas').innerHTML = lista.length ? lista.map(function (x, i) {
+    var cont = $('filas');
+    cont.classList.toggle('entrar', ANIMAR); ANIMAR = false;
+    var y = window.scrollY;
+    cont.innerHTML = lista.length ? lista.map(function (x, i) {
       var sub = [x['Tipo de cliente'] || deObs(x, 'Tipo'), x['Persona de contacto']].filter(Boolean).join(' · ') || x['Teléfono'] || '';
-      return '<div class="fila' + (ACTUAL === x.fila ? ' sel' : '') + '" tabindex="0" role="button" data-f="' + x.fila + '" style="animation-delay:' + Math.min(i, 12) * 25 + 'ms">' +
+      var k = clave(x), nueva = VISTOS && !VISTOS[k];
+      return '<div class="fila' + (ACTUAL === k ? ' sel' : '') + (nueva ? ' nueva' : '') + '" tabindex="0" role="button" data-f="' + esc(k) + '" style="animation-delay:' + Math.min(i, 12) * 25 + 'ms">' +
         '<div class="cliente c-cli">' + avatar(x['Nombre comercial']) + '<div style="min-width:0"><b>' + esc(x['Nombre comercial'] || 'Sin nombre') + '</b><small>' + etiquetaLinea(x) + esc(sub) + '</small>' +
           (x['Nota oficina'] && /^OJO/.test(x['Nota oficina']) ? '<div class="alerta">' + esc(x['Nota oficina']) + '</div>' : '') +
           (x['Estado'] === 'Pendiente' || !x['Estado'] ? chipSugerencia(x) : '') + '</div></div>' +
@@ -531,9 +561,10 @@
     }).join('') : '<div class="vacio"><b>' + (BASE.length ? 'Nada coincide con el filtro' : 'Todavía no hay clientes') + '</b>' +
       (BASE.length ? 'Prueba con otra búsqueda o quita los filtros.' : 'Cuando un vendedor registre uno, aparece aquí solo.') + '</div>';
     document.querySelectorAll('.fila').forEach(function (r) {
-      r.onclick = function () { abrir(+r.dataset.f); };
-      r.onkeydown = function (e) { if (e.key === 'Enter') abrir(+r.dataset.f); };
+      r.onclick = function () { abrir(r.dataset.f); };
+      r.onkeydown = function (e) { if (e.key === 'Enter') abrir(r.dataset.f); };
     });
+    if (window.scrollY !== y) window.scrollTo(0, y);
   }
   function ponerEstado(e) {
     FILTRO.estado = e;
@@ -545,7 +576,7 @@
     FILTRO.linea = l; FILTRO.vendedor = '';
     try { localStorage.setItem('oficina-linea', l); } catch (e) {}
     document.querySelectorAll('#segLinea button').forEach(function (b) { b.classList.toggle('activo', b.dataset.l === l); });
-    recibir(DATOS);
+    recibir(DATOS, true);
   }
   document.querySelectorAll('#segLinea button').forEach(function (b) { b.onclick = function () { ponerLinea(b.dataset.l); }; });
   try { var lg = localStorage.getItem('oficina-linea'); if (lg) { FILTRO.linea = lg; document.querySelectorAll('#segLinea button').forEach(function (b) { b.classList.toggle('activo', b.dataset.l === lg); }); } } catch (e) {}
@@ -557,9 +588,9 @@
     $('fNombre').textContent = x['Nombre comercial'] || 'Sin nombre';
     $('fSub').innerHTML = etiquetaLinea(x) + 'Registrado por ' + esc(x['Vendedor'] || '—') + ' · ' + esc(x['Fecha'] || '');
   }
-  function abrir(fila) {
-    var x = buscarFila(fila); if (!x) return;
-    ACTUAL = fila; ESTADO_SEL = x['Estado'] || 'Pendiente';
+  function abrir(k) {
+    var x = buscarFila(k); if (!x) return;
+    ACTUAL = k; ESTADO_SEL = x['Estado'] || 'Pendiente';
     pintarCabecera(x);
     var mm = String(x['Google Maps'] || '').match(/q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
     function foto(id, titulo, url) {
@@ -595,7 +626,7 @@
       b.onclick = function () { ESTADO_SEL = b.dataset.e; document.querySelectorAll('.estados button').forEach(function (o) { o.classList.toggle('activo', o === b); }); };
     });
     $('ficha').hidden = false; document.body.style.overflow = 'hidden'; $('fCuerpo').scrollTop = 0;
-    document.querySelectorAll('.fila').forEach(function (r) { r.classList.toggle('sel', +r.dataset.f === fila); });
+    document.querySelectorAll('.fila').forEach(function (r) { r.classList.toggle('sel', r.dataset.f === k); });
     if ($('btnAplicar')) $('btnAplicar').onclick = function () {
       var s = recomendar(x, lineaDe(x));
       ESTADO_SEL = 'Aprobado';
@@ -641,7 +672,7 @@
     google.script.run
       .withSuccessHandler(function (r) {
         x['RIF'] = r.rif || x['RIF']; x['Razón social'] = r.razon || x['Razón social'];
-        if (ACTUAL === x.fila) { var y = $('fCuerpo').scrollTop; abrir(x.fila); $('fCuerpo').scrollTop = y; }
+        if (ACTUAL === clave(x)) { var y = $('fCuerpo').scrollTop; abrir(clave(x)); $('fCuerpo').scrollTop = y; }
         toast(r.rif ? 'RIF leído: ' + r.rif : 'No se encontró un RIF en la foto');
       })
       .withFailureHandler(function (e) {
@@ -649,7 +680,7 @@
         $('btnLeerRif').disabled = false; $('btnLeerRif').textContent = 'Reintentar';
         $('fiscalTxt').textContent = /Acción no válida/.test(e.message) ? 'Falta actualizar el código en Apps Script' : 'No se pudo leer: ' + e.message;
       })
-      .leerRif(CLAVE, x.fila);
+      .leerRif(CLAVE, x.fila, x['ID']);
   }
 
   /* ---------- Exportar a Excel ---------- */
@@ -677,45 +708,48 @@
     Excel.descargar(Excel.crear(filas, 'Clientes'), 'clientes-' + (FILTRO.linea === 'BIPA Ritual Sensorial' ? 'ritual-' : FILTRO.linea ? 'productos-' : '') + (soloNuevos ? 'nuevos' : 'aprobados') + '-' + hoy.getFullYear() + '-' + p(hoy.getMonth() + 1) + '-' + p(hoy.getDate()) + '.xlsx');
     $('exportar').hidden = true;
     if (!soloNuevos) { toast('Descargado: ' + lista.length + ' clientes'); return; }
-    var nums = lista.map(function (x) { return x.fila; });
+    var nums = lista.map(function (x) { return x.fila; }), ids = lista.map(function (x) { return x['ID']; });
+    cambio();
     var marca = new Date().toISOString();
     lista.forEach(function (x) { x['Exportado'] = marca; });
     google.script.run
-      .withSuccessHandler(function () { toast('Descargado y marcado: ' + lista.length + ' clientes'); cargar(true); })
+      .withSuccessHandler(function () { guardarCache(DATOS); toast('Descargado y marcado: ' + lista.length + ' clientes'); cargar(true); })
       .withFailureHandler(function (e) {
+        cargar(true);
         lista.forEach(function (x) { x['Exportado'] = ''; });
         toast(/Acción no válida/.test(e.message) ? 'Descargado. Para marcarlos como exportados falta actualizar el código en Apps Script.' : 'Descargado, pero no se pudo marcar: ' + e.message);
       })
-      .marcarExportados(CLAVE, nums);
+      .marcarExportados(CLAVE, nums, ids);
   }
   $('expNuevos').onclick = function () { exportar(true); };
   $('expTodos').onclick = function () { exportar(false); };
 
   $('btnGuardar').onclick = function () {
-    var fila = ACTUAL, e = ESTADO_SEL, nota = $('nota').value, btn = this;
-    btn.disabled = true; btn.textContent = 'Guardando…';
+    var x0 = buscarFila(ACTUAL); if (!x0) return;
+    var k = ACTUAL, e = ESTADO_SEL, nota = $('nota').value, btn = this;
+    btn.disabled = true; btn.textContent = 'Guardando…'; cambio();
     google.script.run
       .withSuccessHandler(function () {
         btn.disabled = false; btn.textContent = 'Guardar revisión';
-        var x = buscarFila(fila); if (x) { x['Estado'] = e; x['Nota oficina'] = nota; }
-        pintar(); cerrar(); toast('Guardado: ' + e); cargar(true);
+        var x = buscarFila(k); if (x) { x['Estado'] = e; x['Nota oficina'] = nota; }
+        FIRMA = ''; guardarCache(DATOS); pintar(); cerrar(); toast('Guardado: ' + e); cargar(true);
       })
-      .withFailureHandler(function (err) { btn.disabled = false; btn.textContent = 'Guardar revisión'; toast('No se pudo guardar: ' + err.message); })
-      .cambiarEstado(CLAVE, fila, e, nota);
+      .withFailureHandler(function (err) { btn.disabled = false; btn.textContent = 'Guardar revisión'; toast('No se pudo guardar: ' + err.message); cargar(true); })
+      .cambiarEstado(CLAVE, x0.fila, e, nota, x0['ID']);
   };
 
   $('btnEliminar').onclick = function () {
     var x = buscarFila(ACTUAL); if (!x) return;
     if (!confirm('¿Eliminar a "' + (x['Nombre comercial'] || 'este cliente') + '"?\n\nSe borra de la hoja y sus fotos van a la papelera de Drive. Esto no se puede deshacer desde el panel.')) return;
-    var btn = this; btn.disabled = true; btn.textContent = 'Eliminando…';
+    var btn = this; btn.disabled = true; btn.textContent = 'Eliminando…'; cambio();
     google.script.run
       .withSuccessHandler(function () {
         btn.disabled = false; btn.textContent = 'Eliminar registro';
-        DATOS = DATOS.filter(function (r) { return r !== x; });
-        cerrar(); recibir(DATOS); toast('Eliminado: ' + (x['Nombre comercial'] || 'registro')); cargar(true);
+        var resto = DATOS.filter(function (r) { return clave(r) !== clave(x); });
+        guardarCache(resto); cerrar(); recibir(resto); toast('Eliminado: ' + (x['Nombre comercial'] || 'registro')); cargar(true);
       })
       .withFailureHandler(function (e) {
-        btn.disabled = false; btn.textContent = 'Eliminar registro';
+        btn.disabled = false; btn.textContent = 'Eliminar registro'; cargar(true);
         toast(/Acción no válida/.test(e.message) ? 'Para eliminar falta actualizar el código en Apps Script (Nueva versión).' : 'No se pudo eliminar: ' + e.message);
       })
       .eliminarCliente(CLAVE, x.fila, x['ID']);
