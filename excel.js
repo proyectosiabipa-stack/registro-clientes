@@ -14,12 +14,12 @@ var Excel = (function () {
   function col(i) { var s = ''; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
 
   // Archivo zip sin comprimir (lo que usa el formato .xlsx por dentro)
-  function zip(archivos) {
+  function zip(archivos, tipo) {
     var enc = new TextEncoder(), partes = [], central = [], pos = 0;
     function u16(v) { return [v & 255, (v >>> 8) & 255]; }
     function u32(v) { return [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; }
     archivos.forEach(function (a) {
-      var nombre = enc.encode(a.nombre), datos = enc.encode(a.texto), crc = crc32(datos);
+      var nombre = enc.encode(a.nombre), datos = a.bytes || enc.encode(a.texto), crc = crc32(datos);
       var comun = [].concat(u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(datos.length), u32(datos.length), u16(nombre.length), u16(0));
       var local = new Uint8Array([].concat(u32(0x04034b50), comun));
       partes.push(local, nombre, datos);
@@ -28,7 +28,7 @@ var Excel = (function () {
     });
     var tamCentral = central.reduce(function (s, p) { return s + p.length; }, 0);
     var fin = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(archivos.length), u16(archivos.length), u32(tamCentral), u32(pos), u16(0)));
-    return new Blob(partes.concat(central, [fin]), { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    return new Blob(partes.concat(central, [fin]), { type: tipo || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
 
   // filas: arreglo de arreglos; la primera es el título de las columnas
@@ -60,5 +60,5 @@ var Excel = (function () {
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
   }
 
-  return { crear: crear, descargar: descargar };
+  return { crear: crear, descargar: descargar, zip: zip };
 })();
