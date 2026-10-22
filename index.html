@@ -298,24 +298,24 @@
     <!-- Paso 1 -->
     <section class="vista" data-paso="0">
       <div class="tarjeta">
-        <div class="campo"><input id="c-nombre" name="nombre" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-nombre">Nombre del negocio <span class="req">*</span></label></div>
-        <div class="campo"><input id="c-contacto" name="contacto" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-contacto">Persona de contacto <span class="req">*</span></label></div>
-        <div class="campo"><input id="c-telefono" name="telefono" type="tel" inputmode="tel" placeholder=" " enterkeyhint="next"><label for="c-telefono">Teléfono <span class="req">*</span></label></div>
-        <div class="campo"><input id="c-correo" name="correo" type="email" inputmode="email" placeholder=" " enterkeyhint="next"><label for="c-correo">Correo <span class="req">*</span></label></div>
+        <div class="campo"><input id="c-nombre" name="nombre" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-nombre">Nombre del negocio</label></div>
+        <div class="campo"><input id="c-contacto" name="contacto" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-contacto">Persona de contacto</label></div>
+        <div class="campo"><input id="c-telefono" name="telefono" type="tel" inputmode="tel" placeholder=" " enterkeyhint="next"><label for="c-telefono">Teléfono</label></div>
+        <div class="campo"><input id="c-correo" name="correo" type="email" inputmode="email" placeholder=" " enterkeyhint="next"><label for="c-correo">Correo</label></div>
       </div>
       <div class="etiqueta-seccion">Negocio</div>
       <div class="tarjeta">
-        <div class="campo lista" id="tipoCampo"><select id="sel-tipo" aria-required="true"></select><label for="sel-tipo">Tipo de cliente <span class="req">*</span></label></div>
-        <div class="campo" id="campoOtro" hidden><input id="c-tipoOtro" placeholder=" " autocapitalize="sentences" enterkeyhint="next"><label for="c-tipoOtro">¿Qué tipo de cliente es? <span class="req">*</span></label></div>
+        <div class="campo lista" id="tipoCampo"><select id="sel-tipo"></select><label for="sel-tipo">Tipo de cliente</label></div>
+        <div class="campo" id="campoOtro" hidden><input id="c-tipoOtro" placeholder=" " autocapitalize="sentences" enterkeyhint="next"><label for="c-tipoOtro">¿Qué tipo de cliente es?</label></div>
         <input type="hidden" name="tipoCliente" id="c-tipo">
-        <div class="campo lista"><select id="c-interes" name="interes" aria-required="true">
+        <div class="campo lista"><select id="c-interes" name="interes">
           <option value="">Elige el nivel de interés</option><option>Bajo</option><option>Medio</option><option>Alto</option>
-        </select><label for="c-interes">Interés <span class="req">*</span></label></div>
+        </select><label for="c-interes">Interés</label></div>
       </div>
       <div class="etiqueta-seccion">Dirección</div>
       <div class="tarjeta">
-        <div class="campo"><input id="c-zona" name="zona" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-zona">Zona o ciudad <span class="req">*</span></label></div>
-        <div class="campo"><textarea id="c-direccion" name="direccion" placeholder=" " rows="2"></textarea><label for="c-direccion">Dirección y punto de referencia <span class="req">*</span></label></div>
+        <div class="campo"><input id="c-zona" name="zona" placeholder=" " autocapitalize="words" enterkeyhint="next"><label for="c-zona">Zona o ciudad</label></div>
+        <div class="campo"><textarea id="c-direccion" name="direccion" placeholder=" " rows="2"></textarea><label for="c-direccion">Dirección y punto de referencia</label></div>
       </div>
       <div class="ayuda-error" id="err0" hidden></div>
     </section>
@@ -578,26 +578,9 @@
     if (navigator.vibrate) navigator.vibrate(40);
     return false;
   }
+  // Ningún dato es obligatorio: el vendedor envía lo que tenga (la oficina completa lo que falte)
   function validar(n) {
     $('err' + n).hidden = true;
-    if (n === 0) {
-      var el = f.elements, vacio = function (k) { return !el[k].value.trim(); };
-      if (vacio('nombre')) return errorPaso(0, 'Escribe el nombre del negocio.', el.nombre);
-      if (vacio('contacto')) return errorPaso(0, 'Escribe la persona de contacto.', el.contacto);
-      if (el.telefono.value.replace(/\D/g, '').length < 10) return errorPaso(0, 'Escribe un teléfono completo, con código de área (ej. 0414 123 4567).', el.telefono);
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(el.correo.value.trim())) return errorPaso(0, 'Escribe un correo válido (ej. nombre@gmail.com).', el.correo);
-      var tipo = $('c-tipo').value.trim();
-      if (!tipo) return errorPaso(0, 'Elige el tipo de cliente.', $('sel-tipo'));
-      if (tipo === 'Otros:') return errorPaso(0, 'Escribe qué tipo de cliente es.', $('c-tipoOtro'));
-      if (vacio('interes')) return errorPaso(0, 'Elige el nivel de interés del cliente.', el.interes);
-      if (vacio('zona')) return errorPaso(0, 'Escribe la zona o ciudad.', el.zona);
-      if (vacio('direccion')) return errorPaso(0, 'Escribe la dirección y un punto de referencia.', el.direccion);
-    }
-    if (n === 1) {
-      if (!fotos.fotoRif) { $('tileRif').classList.add('error-foto'); return errorPaso(1, 'Falta la foto del RIF.'); }
-      if (!fotos.fotoLocal) { $('tileLocal').classList.add('error-foto'); return errorPaso(1, 'Falta la foto del local.'); }
-    }
-    if (n === 2 && !gps && !f.elements.mapsLink.value.trim() && !sinUbic) { mostrarSinUbic(); return errorPaso(2, 'Toma la ubicación. Si no aparece, toca "seguir sin ella".'); }
     return true;
   }
   document.querySelectorAll('.paso').forEach(function (p) {
@@ -743,8 +726,10 @@
     if (!LINEA) { elegirLinea(); return; }
     var d = { vendedor: $('vendedor').value, idLocal: Cola.nuevoId(), linea: LINEA };
     CAMPOS.forEach(function (k) { d[k] = f.elements[k].value.trim(); });
+    if (!d.nombre) d.nombre = 'Sin nombre'; // el motor necesita un nombre para guardar el registro
+    if (d.tipoCliente === 'Otros:') d.tipoCliente = 'Otros';
     if (gps) { d.lat = gps.lat; d.lng = gps.lng; d.precision = gps.precision; }
-    else if (!d.mapsLink) d.notas = ['Sin ubicación (no hubo señal de GPS)', d.notas].filter(Boolean).join(' · ');
+    else if (!d.mapsLink) d.notas = ['Sin ubicación', d.notas].filter(Boolean).join(' · ');
     d.fotoRif = fotos.fotoRif; d.fotoLocal = fotos.fotoLocal;
     // Si el motor todavía no tiene las columnas nuevas, se guardan dentro de Observaciones
     if (VERSION_MOTOR < 2 && (d.tipoCliente || d.interes)) {
