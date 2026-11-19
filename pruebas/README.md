@@ -11,4 +11,8 @@ npm i playwright && npx playwright install chromium
 node e2e.js
 ```
 
-Tarda unos 3 minutos (espera dos veces 62 s a propósito, para probar el refresco del panel). Clave de prueba: `cambiar1234`. Las fotos de ejemplo están en `fotos/`.
+Prueba de la galería de fotos y de "Mis clientes" (rápida, ~1 minuto, mismo servidor y mismo simulador): `node e2e-galeria-historial.js`.
+
+Recomendado: correr todo sobre una copia del repositorio cuyo `config.js` tenga una `API_URL` falsa (por ejemplo `.../macros/s/PRUEBA-FALSA/exec`). Así, aunque algo se escapara del simulador, nunca llegaría al motor real.
+
+`e2e.js` tarda unos 3 minutos (espera dos veces 62 s a propósito, para probar el refresco del panel). Clave de prueba: `cambiar1234`. Las fotos de ejemplo están en `fotos/`.
