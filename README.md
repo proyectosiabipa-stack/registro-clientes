@@ -28,6 +28,6 @@ En el Google Drive de la cuenta dueña del Apps Script:
 
 ## Para quien administra
 
-- **`ENTREGA.md`**: guía en español para administrar la app y hacer cambios (también con Claude Code).
-- **`CLAUDE.md`**: instrucciones para el asistente de código.
+- **`ENTREGA.md`**: guía en español para administrar la app y hacer cambios con cualquier asistente de IA.
+- **`AGENTS.md`**: instrucciones para el asistente de IA (Claude, Cursor, Copilot, Codex…). `CLAUDE.md` apunta a él.
 - **`pruebas/`**: prueba completa que simula Google Apps Script y no toca datos reales.

@@ -1,6 +1,6 @@
 # Guía de entrega: cómo administrar y cambiar la app
 
-Esta guía es para la persona que se queda a cargo de la app de **registro de clientes nuevos** de BIPA. No hace falta saber programar: los cambios se piden en español a Claude Code (u otra herramienta de "vibe coding") abierta sobre este repositorio. El archivo `CLAUDE.md` le explica a Claude cómo está hecha la app.
+Esta guía es para la persona que se queda a cargo de la app de **registro de clientes nuevos** de BIPA. No hace falta saber programar: los cambios se piden en español a cualquier asistente de IA para código (Claude Code, Cursor, GitHub Copilot, Codex, Gemini, Windsurf, etc.) abierto sobre este repositorio. El archivo `AGENTS.md` le explica a la IA cómo está hecha la app; la mayoría lo lee sola. Si tu herramienta no lo lee, dile al empezar: "lee AGENTS.md antes de hacer cambios".
 
 ## 1. Qué es y quién la usa
 
@@ -33,7 +33,7 @@ Ojo: en el Drive hay copias viejas con el mismo nombre. La hoja y la carpeta **v
 
 ## 3. Cómo hacer un cambio
 
-1. Abre Claude Code sobre este repositorio (en la web: claude.ai/code y elige el repositorio; o en tu computadora clonándolo).
+1. Abre tu herramienta de IA sobre este repositorio (clonándolo en tu computadora, o desde la web si tu herramienta lo permite, por ejemplo claude.ai/code o GitHub Codespaces con Copilot).
 2. Pide el cambio en palabras normales, por ejemplo:
    - "Agrega a la vendedora Ana a la lista y quita a Juan."
    - "En el panel, pon el teléfono en grande en la ficha."
@@ -59,7 +59,7 @@ Ojo: en el Drive hay copias viejas con el mismo nombre. La hoja y la carpeta **v
 
 ## 5. Probar sin tocar datos reales
 
-La carpeta `pruebas/` tiene una prueba completa que simula Google en la computadora (no escribe en la hoja real). Pídele a Claude: "corre la prueba completa de `pruebas/`". Hace unas 30 comprobaciones (registro, fotos, GPS, señal cortada, cola sin señal, duplicados, panel, aprobar varios, eliminar y Excel).
+La carpeta `pruebas/` tiene una prueba completa que simula Google en la computadora (no escribe en la hoja real). Pídele a la IA: "corre la prueba completa de `pruebas/`". Hace 32 comprobaciones (registro, fotos, GPS, señal cortada, cola sin señal, duplicados, panel, aprobar varios, eliminar y Excel).
 
 ## 6. Accesos que necesitas
 
