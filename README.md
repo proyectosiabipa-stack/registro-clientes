@@ -25,3 +25,9 @@ La clave de oficina **no** se guarda en GitHub: se pone en `CONFIG.CLAVE_OFICINA
 En el Google Drive de la cuenta dueña del Apps Script:
 - Hoja **"Registro de clientes nuevos"**: una fila por cliente.
 - Carpeta **"Registro de clientes - Fotos"**: fotos del RIF y del local.
+
+## Para quien administra
+
+- **`ENTREGA.md`**: guía en español para administrar la app y hacer cambios (también con Claude Code).
+- **`CLAUDE.md`**: instrucciones para el asistente de código.
+- **`pruebas/`**: prueba completa que simula Google Apps Script y no toca datos reales.
