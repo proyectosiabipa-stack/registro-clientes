@@ -262,6 +262,35 @@
   .pendientes.ok .pt { animation: none; }
   @keyframes late { 50% { opacity: .3; } }
   #exito.en-cola .check { background: var(--warn-soft); color: var(--warn); }
+
+  /* Elegir foto de la galería (debajo de cada casilla de cámara) */
+  .foto-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .enlace-galeria { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border-radius: 12px; overflow: hidden;
+                    border: 1.5px solid var(--line); background: var(--surface); color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; padding: 6px; }
+  .enlace-galeria:active { background: var(--surface-2); }
+  .enlace-galeria:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .enlace-galeria input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  /* Mis clientes (solo lectura) */
+  .btn-historial { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px;
+                   background: var(--surface); font: inherit; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; text-align: left; }
+  .btn-historial small { margin-left: auto; color: var(--accent); font-size: 13px; }
+  .hist { position: fixed; inset: 0; z-index: 32; background: var(--bg); overflow-y: auto; animation: aparece .3s ease;
+          padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px); }
+  .hist-in { max-width: 560px; margin: 0 auto; }
+  .hist-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .hist-cab h2 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
+  .hist-cerrar { height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700; font-size: 14px; cursor: pointer; }
+  .hist-estado { color: var(--ink-2); font-size: 13px; margin: 6px 0 14px; }
+  .hist-sec { font-size: 12px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; margin: 18px 4px 8px; }
+  .hist-item { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); padding: 12px 14px; margin-bottom: 10px; }
+  .hist-item .h1 { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .hist-item .h1 b { font-size: 16px; overflow-wrap: anywhere; }
+  .hist-item .h2 { color: var(--ink-2); font-size: 13px; margin-top: 4px; overflow-wrap: anywhere; }
+  .hist-vacio { text-align: center; color: var(--ink-2); padding: 40px 12px; }
+  .insignia.pendiente { background: var(--warn-soft); color: var(--warn); }
+  .insignia.aprobado { background: var(--ok-soft); color: var(--ok); }
+  .insignia.rechazado { background: var(--bad-soft); color: var(--bad); }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .check path { stroke-dashoffset: 0; } }
 </style>
 </head>
@@ -280,6 +309,8 @@
   </header>
 
   <button class="linea-actual" id="lineaActual" type="button" hidden><i></i><span id="lineaNombre"></span><small>Cambiar</small></button>
+
+  <button class="btn-historial" id="btnHistorial" type="button" hidden><span>Mis clientes</span><small>Ver registrados</small></button>
 
   <button class="pendientes" id="pendientes" type="button" hidden><span class="pt"></span><span id="pendTxt"></span><small id="pendAccion">Enviar ahora</small></button>
 
@@ -323,16 +354,22 @@
     <!-- Paso 2 -->
     <section class="vista" data-paso="1" hidden>
       <div class="fotos">
+        <div class="foto-col">
         <label class="foto" id="tileRif">
           <input type="file" accept="image/*" capture="environment" id="fotoRif">
           <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 10h6M7 14h4"/><circle cx="16.5" cy="12" r="1.8"/></svg></div>
           <b>Foto del RIF</b><small>Toca para tomarla</small>
         </label>
+        <label class="enlace-galeria">Elegir de la galería<input type="file" accept="image/*" id="galeriaRif"></label>
+        </div>
+        <div class="foto-col">
         <label class="foto" id="tileLocal">
           <input type="file" accept="image/*" capture="environment" id="fotoLocal">
           <div class="ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 5 4h14l2 5.5"/><path d="M4 9.5V20h16V9.5"/><path d="M3 9.5c0 1.4 1.1 2.5 2.5 2.5S8 10.9 8 9.5c0 1.4 1.1 2.5 2.5 2.5S13 10.9 13 9.5c0 1.4 1.1 2.5 2.5 2.5S18 10.9 18 9.5c0 1.4 1.1 2.5 2.5 2.5"/><path d="M10 20v-5h4v5"/></svg></div>
           <b>Foto del local</b><small>Fachada con el letrero</small>
         </label>
+        <label class="enlace-galeria">Elegir de la galería<input type="file" accept="image/*" id="galeriaLocal"></label>
+        </div>
       </div>
       <div class="consejo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
         <span>Que el RIF se lea completo y sin reflejos. La oficina copia los datos desde esta foto.</span></div>
@@ -434,6 +471,15 @@
   <button class="btn btn-pri" id="btnOtro" type="button">Registrar otro cliente</button>
 </div>
 
+<!-- Mis clientes (solo lectura) -->
+<div class="hist" id="hist" hidden>
+  <div class="hist-in">
+    <div class="hist-cab"><h2>Mis clientes</h2><button class="hist-cerrar" id="histCerrar" type="button">Cerrar</button></div>
+    <div class="hist-estado" id="histEstado"></div>
+    <div id="histLista"></div>
+  </div>
+</div>
+
 <div id="error" hidden></div>
 
 <script>
@@ -481,6 +527,7 @@
     var v = $('inVendedor').value.trim();
     if (!v) { $('inVendedor').parentNode.classList.add('error'); return; }
     $('vendedor').value = v; guardar('vendedor', v); pintarVendedor(); $('velo').hidden = true;
+    actualizarBotonHistorial();
   };
   $('inVendedor').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('btnGuardarVendedor').click(); });
   $('vendedor').value = leer('vendedor') || '';
@@ -607,7 +654,9 @@
         var max = 1400, w = img.width, h = img.height;
         if (w > max || h > max) { var k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
         var c = document.createElement('canvas'); c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        var g = c.getContext('2d');
+        g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); // fondo blanco: una captura PNG con transparencia no debe salir negra
+        g.drawImage(img, 0, 0, w, h);
         URL.revokeObjectURL(img.src);
         resolve(c.toDataURL('image/jpeg', 0.74));
       };
@@ -615,9 +664,11 @@
       img.src = URL.createObjectURL(file);
     });
   }
-  [['fotoRif', 'tileRif', 'RIF'], ['fotoLocal', 'tileLocal', 'Local']].forEach(function (p) {
-    $(p[0]).addEventListener('change', function () {
+  // Cada casilla tiene dos entradas (cámara y galería) que pasan por exactamente el mismo flujo
+  [['fotoRif', 'tileRif', 'RIF', 'galeriaRif'], ['fotoLocal', 'tileLocal', 'Local', 'galeriaLocal']].forEach(function (p) {
+    [p[0], p[3]].forEach(function (idEntrada) { $(idEntrada).addEventListener('change', function () {
       var file = this.files && this.files[0]; if (!file) return;
+      this.value = ''; // así se puede volver a elegir el mismo archivo
       var tile = $(p[1]);
       tile.classList.remove('error-foto'); $('err1').hidden = true;
       comprimir(file).then(function (data) {
@@ -628,7 +679,7 @@
         var s = document.createElement('div'); s.className = 'sello';
         s.innerHTML = '<span>✓ ' + p[2] + '</span><i>Cambiar</i>'; tile.appendChild(s);
       }).catch(function (e) { toast(e.message); });
-    });
+    }); });
   });
 
   /* ---------- Ubicación ---------- */
@@ -828,9 +879,67 @@
     $('exito').hidden = true; ir(0, true);
   };
 
+  /* ---------- Mis clientes: historial de solo lectura (necesita motor versión 8 o más) ---------- */
+  var cargaHist = 0;
+  function actualizarBotonHistorial() { $('btnHistorial').hidden = !($('vendedor').value && VERSION_MOTOR >= 8); }
+  function claveHist() { return 'historial:' + $('vendedor').value.trim().toLowerCase(); }
+  function leerCopiaHist() { try { var c = JSON.parse(leer(claveHist()) || 'null'); return c && c.filas ? c : null; } catch (e) { return null; } }
+  function hace(t) {
+    var m = Math.round((Date.now() - t) / 60000);
+    return m < 1 ? 'hace un momento' : m < 60 ? 'hace ' + m + ' min' : m < 1440 ? 'hace ' + Math.round(m / 60) + ' h' : 'hace ' + Math.round(m / 1440) + ' días';
+  }
+  function pintarHist(copia, pend, aviso, cargando) {
+    $('histEstado').textContent = aviso || '';
+    var h = '';
+    if (pend.length) {
+      h += '<div class="hist-sec">Por enviar</div>' + pend.map(function (i) {
+        var d = i.datos || {};
+        return '<div class="hist-item"><div class="h1"><b>' + esc(d.nombre || 'Sin nombre') + '</b><span class="insignia pendiente">Por enviar</span></div>' +
+          '<div class="h2">' + [d.tipoCliente, d.linea, d.zona].filter(Boolean).map(esc).join(' · ') + '</div></div>';
+      }).join('');
+    }
+    if (copia && copia.filas.length) {
+      h += '<div class="hist-sec">Registrados</div>' + copia.filas.map(function (r) {
+        return '<div class="hist-item"><div class="h1"><b>' + esc(r.nombre || 'Sin nombre') + '</b><span class="insignia ' + esc(String(r.estado).toLowerCase()) + '">' + esc(r.estado) + '</span></div>' +
+          '<div class="h2">' + [r.fecha, r.tipo, r.linea, r.zona].filter(Boolean).map(esc).join(' · ') + '</div></div>';
+      }).join('');
+    }
+    if (!h) h = '<div class="hist-vacio">' + (cargando ? 'Cargando…' : copia ? 'Todavía no has registrado clientes.' : 'Sin señal y todavía no hay una copia guardada. Ábrelo una vez con señal.') + '</div>';
+    $('histLista').innerHTML = h;
+  }
+  function abrirHistorial() {
+    if (!$('vendedor').value) { pedirVendedor(); return; }
+    $('hist').hidden = false; refrescarHistorial();
+  }
+  function refrescarHistorial() {
+    var mi = ++cargaHist, vend = $('vendedor').value, clave = claveHist(), copia = leerCopiaHist();
+    Cola.todos().catch(function () { return []; }).then(function (l) {
+      if (mi !== cargaHist) return;
+      var pend = l.filter(function (i) { return i.datos && String(i.datos.vendedor || '').toLowerCase() === vend.trim().toLowerCase(); });
+      var sinSenal = navigator.onLine === false;
+      pintarHist(copia, pend, sinSenal ? (copia ? 'Sin señal · copia guardada ' + hace(copia.t) : '') : 'Actualizando…', !sinSenal);
+      if (sinSenal) return;
+      google.script.run.withSuccessHandler(function (r) {
+        if (mi !== cargaHist) return;
+        if (r && r.sinCambios && copia) { copia.t = Date.now(); r = copia; }
+        else r = { t: Date.now(), v: r.v, filas: r.filas || [] };
+        guardar(clave, JSON.stringify(r));
+        pintarHist(r, pend, 'Actualizado ahora');
+      }).withFailureHandler(function (e) {
+        if (mi !== cargaHist) return;
+        if (/Acci[oó]n no v[aá]lida/i.test(e.message || '')) { VERSION_MOTOR = 0; $('hist').hidden = true; actualizarBotonHistorial(); return; }
+        pintarHist(copia, pend, copia ? 'Sin conexión · copia guardada ' + hace(copia.t) : '');
+      }).historialVendedor(vend, copia ? copia.v : undefined);
+    });
+  }
+  $('btnHistorial').onclick = abrirHistorial;
+  $('histCerrar').onclick = function () { cargaHist++; $('hist').hidden = true; };
+  window.addEventListener('online', function () { if (!$('hist').hidden) refrescarHistorial(); });
+
   /* ---------- Versión del motor (para campos nuevos) ---------- */
   var VERSION_MOTOR = Number(leer('versionMotor')) || 0; // la última conocida, por si no hay señal
-  google.script.run.withSuccessHandler(function (v) { VERSION_MOTOR = v || 0; guardar('versionMotor', String(VERSION_MOTOR)); }).withFailureHandler(function () {}).version();
+  google.script.run.withSuccessHandler(function (v) { VERSION_MOTOR = v || 0; guardar('versionMotor', String(VERSION_MOTOR)); actualizarBotonHistorial(); }).withFailureHandler(function () {}).version();
+  actualizarBotonHistorial();
 
   /* ---------- Instalar como app ---------- */
   var instalar = null;

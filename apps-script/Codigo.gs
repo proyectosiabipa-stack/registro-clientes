@@ -76,11 +76,12 @@ function doGet(e) {
 /** Las pantallas llaman aquí. Solo se permiten estas funciones. */
 const ACCIONES = {
   registrarCliente, listarClientes, cambiarEstado, verFoto,
-  urlHoja, version, leerRif, marcarExportados, eliminarCliente, aprobarVarios
+  urlHoja, version, leerRif, marcarExportados, eliminarCliente, aprobarVarios,
+  historialVendedor
 };
 
 /** Las pantallas preguntan esto para saber qué campos acepta el motor. */
-function version() { return 7; }
+function version() { return 8; }
 
 function doPost(e) {
   let res;
@@ -197,6 +198,38 @@ function registrarCliente(d) {
   }
   try { avisarPorCorreo_(fila); } catch (e) { console.log(e.message); }
   return res;
+}
+
+/**
+ * "Mis clientes" del vendedor: solo lectura y solo datos básicos (nunca teléfono, RIF, correo, ubicación ni fotos).
+ * Devuelve únicamente los registros del vendedor pedido, del más nuevo al más viejo (máximo 200).
+ */
+function historialVendedor(vendedor, versionConocida) {
+  const quitarTildes = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  const quien = quitarTildes(vendedor);
+  if (!quien) throw new Error('Falta el nombre del vendedor');
+  const v = PropertiesService.getScriptProperties().getProperty('VERSION_DATOS') || '0';
+  if (versionConocida && versionConocida === v) return { v: v, sinCambios: true };
+  const hoja = getHoja_();
+  if (hoja.getLastRow() < 2) return { v: v, filas: [] };
+  const datos = hoja.getRange(2, 1, hoja.getLastRow() - 1, COLUMNAS.length).getValues();
+  const c = n => COLUMNAS.indexOf(n);
+  const zona = Session.getScriptTimeZone();
+  const filas = [];
+  for (let i = datos.length - 1; i >= 0 && filas.length < 200; i--) {
+    const r = datos[i];
+    if (quitarTildes(r[c('Vendedor')]) !== quien) continue;
+    const f = r[c('Fecha')];
+    filas.push({
+      fecha: f instanceof Date ? Utilities.formatDate(f, zona, 'dd/MM/yyyy HH:mm') : String(f || ''),
+      nombre: String(r[c('Nombre comercial')] || ''),
+      tipo: String(r[c('Tipo de cliente')] || ''),
+      linea: String(r[c('Línea')] || LINEAS[0]),
+      zona: String(r[c('Zona / Ciudad')] || ''),
+      estado: String(r[c('Estado')] || 'Pendiente')
+    });
+  }
+  return { v: v, filas: filas };
 }
 
 function guardarFoto_(carpeta, dataUrl, nombre) {
