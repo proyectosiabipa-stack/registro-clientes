@@ -47,7 +47,21 @@ Ojo: en el Drive hay copias viejas con el mismo nombre. La hoja y la carpeta **v
 1. Abre script.google.com → proyecto "REGISTRO DE CLIENTES NUEVOS".
 2. Borra todo el contenido de `Código.gs` y pega el nuevo `apps-script/Codigo.gs` completo. Guarda (💾).
 3. **Implementar → Gestionar implementaciones → ✏️ (lápiz) → Versión: "Nueva versión" → Implementar.**
-4. **No** uses "Nueva implementación": cambia el enlace `/exec` y la app deja de funcionar (habría que ponerlo en `config.js`).
+4. **No** uses "Nueva implementación" para cada cambio: crea otro enlace `/exec` y habría que ponerlo en `config.js`.
+
+Ojo: en Google, **cada implementación solo la puede actualizar la persona que la creó**. Un Editor puede cambiar el código, pero no publicar "Nueva versión" en la implementación de otra persona. Si te pasa, haz una sola vez el paso 3b.
+
+### 3b. Tener tu propia implementación (una sola vez, la hace quien administra)
+
+Necesitas ser Editor del Apps Script, de la Hoja y de la carpeta de fotos, y colaborador del repositorio en GitHub. No hace falta nada del dueño anterior: la hoja, la carpeta y la clave de oficina siguen siendo las mismas, porque están guardadas en el proyecto.
+
+1. En el Apps Script, arriba elige la función **`autorizar`** y toca **Ejecutar**. Acepta los permisos con tu cuenta (si sale "Google no verificó esta app": Configuración avanzada → Ir a … → Permitir).
+2. **Implementar → Nueva implementación** → tipo **Aplicación web**. Ejecutar como: **Yo** (tu correo). Quién tiene acceso: **Cualquier persona**. → **Implementar**.
+3. Copia la **URL de la aplicación web** (termina en `/exec`).
+4. En GitHub, en `config.js`, cambia `API_URL` por esa URL. En `sw.js`, sube el número de `CACHE` (por ejemplo `v21` → `v22`). Sube los cambios a `main` (o pídeselo a la IA: "cambia el enlace del motor por esta URL").
+5. Abre el panel de oficina y entra con la clave para comprobar que se ven los clientes.
+
+Desde ahí, para cada cambio del motor usa **Gestionar implementaciones → ✏️ → Nueva versión** sobre **tu** implementación. El motor ahora trabaja con tu cuenta: los correos de aviso llegan a tu correo y las fotos nuevas quedan a tu nombre dentro de la misma carpeta. La implementación vieja puede quedarse; ya no se usa.
 
 ## 4. Tareas comunes
 
